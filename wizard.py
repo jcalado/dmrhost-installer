@@ -118,7 +118,8 @@ def run_gui(port: int, open_browser: bool) -> None:
     Handler.token = secrets.token_urlsafe(18)
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{httpd.server_address[1]}/#{Handler.token}"
-    print(f"dmrhost-installer {hotspot.VERSION}: the wizard is at\n  {url}\nPress Ctrl+C here to quit.")
+    # flush: a bundled .exe ignores PYTHONUNBUFFERED, and a piped console would hide the address
+    print(f"dmrhost-installer {hotspot.VERSION}: the wizard is at\n  {url}\nPress Ctrl+C here to quit.", flush=True)
     if open_browser:
         threading.Timer(0.3, webbrowser.open, (url,)).start()
     try:

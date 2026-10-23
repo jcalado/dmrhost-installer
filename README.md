@@ -25,7 +25,9 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
 
 **On your computer**
 
-- Linux, macOS or Windows with Python 3.9 or newer. Nothing else to install.
+- Linux, macOS or Windows. Either download the installer for your system from the
+  [releases](https://github.com/jcalado/dmrhost-installer/releases), or use Python 3.9 or newer with nothing else to
+  install.
 - [Raspberry Pi Imager](https://www.raspberrypi.com/software/), to flash the card.
 
 ## Use
@@ -43,7 +45,10 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
    python3 wizard.py --cli      # same questions in the terminal
    ```
 
-   On Windows, use `py wizard.py` if `python3` isn't found. You can fill in the answers while Imager is still writing.
+   On Windows, use `py wizard.py` if `python3` isn't found. With a downloaded installer, run it instead of
+   `python3 wizard.py`, with the same options. The downloads aren't signed: on Windows, choose **More info → Run
+   anyway**; on macOS, run `xattr -d com.apple.quarantine dmrhost-installer-macos-arm64` first, and on macOS and
+   Linux, `chmod +x` it. You can fill in the answers while Imager is still writing.
    Type your callsign and the wizard looks up your DMR IDs on radioid.net. Picking one also picks the BrandMeister
    master it last used.
 4. Pick the card and write. Eject it, put it in the Pi with the hat on, and power it up.
@@ -142,6 +147,25 @@ systemctl status dmrhost-firstboot dmrhost
 the wizard copies it onto the card. Without it, the Pi tries to download the package from GitHub on first boot, and
 skips the dashboard if it can't.
 
+## Releases
+
+Pushing a `v*` tag runs [`release.yml`](.github/workflows/release.yml). It builds the installer with PyInstaller on
+Linux (x64), Windows (x64) and macOS (Apple silicon), with the latest dmrdash package inside, runs each one against
+the stock boot files, and publishes them with a `SHA256SUMS` on a GitHub release. The tag must match `VERSION` in
+`hotspot.py`. Run it from the Actions tab instead to build without publishing.
+
+While dmrdash is private, the workflow needs a `DMRDASH_TOKEN` secret: a fine-grained token with read access to
+the contents of `jcalado/dmrdash`.
+
+To build one yourself, on the system it is for:
+
+```sh
+pip install pyinstaller
+./fetch-dmrdash.sh
+pyinstaller --onefile --name dmrhost-installer --add-data "ui.html:." --add-data "payload:payload" \
+    --add-data "assets:assets" wizard.py
+```
+
 ## Develop
 
 ```sh
@@ -159,7 +183,7 @@ shellcheck payload/firstboot.sh fetch-dmrdash.sh
 ## Roadmap
 
 - A test on real hardware, from a blank card to a live hotspot.
-- Windows, macOS and Linux binaries built by PyInstaller in CI, so you don't need Python.
+- Signed Windows and macOS installers, and an Intel macOS build.
 - Flashing the card from the wizard too, probably through Raspberry Pi Imager's command line.
 - A pre-built image with the packages already installed, for offline setup. It would read the same
   `dmrhost-setup/` files.

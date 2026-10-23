@@ -1,0 +1,89 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  dmrdash:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the dmrdash package
+        env:
+          # read access to jcalado/dmrdash, while that repo is private
+          GH_TOKEN: ${{ secrets.DMRDASH_TOKEN }}
+        run: gh release download --repo jcalado/dmrdash --pattern 'dmrdash_*_all.deb' --dir payload
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dmrdash
+          path: payload/dmrdash_*_all.deb
+          if-no-files-found: error
+
+  build:
+    needs: dmrdash
+    strategy:
+      matrix:
+        include:
+          # the oldest runner, so the Linux binary runs on older glibc
+          - { os: ubuntu-22.04, name: dmrhost-installer-linux-x64 }
+          - { os: windows-latest, name: dmrhost-installer-windows-x64.exe }
+          - { os: macos-latest, name: dmrhost-installer-macos-arm64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v8
+        with:
+          name: dmrdash
+          path: payload
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          v=$(python -c 'import hotspot; print(hotspot.VERSION)')
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME, but hotspot.VERSION is $v"; exit 1; }
+      - run: pip install pyinstaller
+      - name: Build
+        run: |
+          # --add-data takes src:dest on every OS since PyInstaller 6
+          pyinstaller --onefile --name dmrhost-installer \
+            --add-data "ui.html:." --add-data "payload:payload" --add-data "assets:assets" \
+            wizard.py
+          mkdir out
+          mv dist/dmrhost-installer* "out/${{ matrix.name }}"
+      - name: Smoke test
+        run: |
+          bin="out/${{ matrix.name }}"
+          "$bin" --version
+          cp -r tests/fixtures/bootfs "$RUNNER_TEMP/bootfs"
+          "$bin" --answers tests/smoke-answers.json --boot "$RUNNER_TEMP/bootfs" --yes
+          ls "$RUNNER_TEMP"/bootfs/dmrhost-setup/dmrdash_*_all.deb
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.name }}
+          path: out/${{ matrix.name }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dmrhost-installer-*
+          path: out
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd out
+          sha256sum dmrhost-installer-* > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes ./*
