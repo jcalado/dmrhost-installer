@@ -35,8 +35,41 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
 1. Flash **Raspberry Pi OS Lite (64-bit)**, trixie (2025-10) or newer, with
    [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Either pick it in Imager under
    **Raspberry Pi OS (other)**, or [download the latest image](https://downloads.raspberrypi.com/raspios_lite_arm64_latest)
-   and choose **Use custom**. If Imager offers to customise the OS, skip it: the installer sets the user, Wi-Fi and
-   hostname itself. The wizard's Start page has the same links.
+   and choose **Use custom**. The wizard's Start page has the same links.
+
+   Imager, screen by screen:
+
+   - **Device**: your Pi model.
+
+     ![Raspberry Pi Imager's Device step, with the Pi Zero 2 W picked](docs/imager-device.png)
+
+   - **OS**: the Lite image isn't on the first list. Open **Raspberry Pi OS (other)**,
+
+     ![Imager's OS step, with Raspberry Pi OS (other) below the desktop images](docs/imager-os.png)
+
+     then pick **Raspberry Pi OS Lite (64-bit)**, the first one. Not the 32-bit Lite further down: the installer
+     refuses it.
+
+     ![Inside Raspberry Pi OS (other), with Raspberry Pi OS Lite (64-bit) at the top](docs/imager-os-lite.png)
+
+   - **Storage**: your SD card. Check the size, so you don't pick another drive.
+
+     ![Imager's Storage step, with a 31.3 GB card picked](docs/imager-storage.png)
+
+   - **Customisation**: click **Skip customisation**, bottom left. Don't fill in the hostname, user or Wi-Fi here:
+     the wizard asks for them, and Imager's settings would clash with its own.
+
+     ![Imager's Customisation step, with the Skip customisation button outlined](docs/imager-skip-customisation.png)
+
+   - **Writing**: check the summary, click **Write**, and confirm the erase.
+
+     ![Imager's Write step, summarising the Pi Zero 2 W, Raspberry Pi OS Lite (64-bit) and the card](docs/imager-write.png)
+
+     ![Imager's warning that writing erases everything on the card](docs/imager-erase.png)
+
+   On Linux, Imager needs root to write. Click **Install Authorization** when it asks. On Wayland, the root copy
+   can't open its window unless you first run `xhost +si:localuser:root` (from the `xorg-xhost` package on Arch).
+
 2. Take the card out and put it back in, so your computer mounts its `bootfs` partition.
 3. Run the wizard:
 
