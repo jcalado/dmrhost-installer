@@ -151,6 +151,8 @@ shellcheck payload/firstboot.sh fetch-dmrdash.sh
 
 - `hotspot.py` holds the questions (`SECTIONS`), validation and rendering, shared by both front ends.
 - `wizard.py` holds the browser server and the command line. `ui.html` is the browser wizard: one file, no build step.
+- `assets/dmrdash.webp` is the dashboard preview on the Dashboard step, cropped from dmrdash 1.0.0's README
+  screenshot. Update it, and the step's feature list, when the bundled dmrdash changes.
 - `payload/` is what goes onto the card. `MMDVM.ini.in` started as a working CT7BLE hotspot's config.
 - `tests/fixtures/bootfs` holds the boot files of the stock 2026-10-06 trixie Lite image.
 

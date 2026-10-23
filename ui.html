@@ -246,6 +246,45 @@ a.dl:hover { filter: brightness(1.08); }
 a.dl svg { width: 18px; height: 18px; }
 .get p.dl-note { margin: var(--s2) 0 0; font-size: 13px; color: var(--legend-dim); }
 .get p.more { margin: auto 0 0; padding-top: var(--s3); font-size: 13px; }
+.choices.flash { margin: 0 0 var(--s4); }
+.get:has(> div:only-child) { grid-template-columns: 1fr; }
+ol.how code { font: 12px var(--mono); }
+ol.how code.cmd { font-size: 12px; margin: var(--s2) 0 var(--s2); white-space: pre; }
+.warn.inline { display: flex; gap: var(--s2); align-items: flex-start; padding: var(--s2) var(--s3); border: 1px solid var(--warn-rule);
+  border-radius: 4px; background: var(--warn-bg); color: var(--warn-text); font-size: 13px; }
+.warn.inline svg { flex: none; color: var(--busy); width: 16px; height: 16px; margin-top: 1px; }
+/* Dashboard step: what dmrdash does */
+.card h2:has(+ .pitch) { margin-bottom: var(--s2); }
+.pitch { margin: 0 0 var(--s6); padding-bottom: var(--s5); border-bottom: 1px solid var(--rule); }
+.pitch figure { margin: 0 0 var(--s5); }
+.pitch img { display: block; width: 100%; height: auto; border: 1px solid var(--rule-2); border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+.pitch figcaption { margin-top: var(--s2); color: var(--legend-dim); font-size: 12px; }
+.feats { list-style: none; margin: 0 0 var(--s4); padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4) var(--s5); }
+@media (max-width: 640px) { .feats { grid-template-columns: 1fr; } }
+.feats li { padding-left: var(--s4); border-left: 2px solid var(--rx); }
+.feats b { display: block; font-weight: 600; margin-bottom: 2px; }
+.feats li > span { color: var(--legend); font-size: 13px; line-height: 1.5; }
+.feats .tag, .need .tag { margin-left: var(--s2); padding: 1px 6px; border: 1px solid var(--rule-2); border-radius: 3px;
+  color: var(--legend-dim); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }
+p.small { font-size: 13px; margin: 0; }
+
+/* Start: what you'll need */
+.need { margin: 0 0 var(--s6); }
+.need ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3) var(--s5); }
+@media (max-width: 640px) { .need ul { grid-template-columns: 1fr; } }
+.need li { display: flex; gap: var(--s3); align-items: flex-start; }
+.need input { appearance: none; flex: none; width: 18px; height: 18px; margin: 1px 0 0; border: 2px solid var(--rx);
+  border-radius: 4px; background: transparent center / 12px no-repeat; cursor: pointer;
+  transition: background-color .15s var(--ease-out), border-color .15s var(--ease-out); }
+.need input:checked { background-color: var(--rx); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.5l4.5-5' fill='none' stroke='%2308140d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.need input:focus-visible { outline: 2px solid var(--rx); outline-offset: 2px; }
+.need li.opt-item input { border-color: var(--rule-2); border-style: dashed; }
+.need li.opt-item input:checked { border-style: solid; border-color: var(--rx); }
+.need label { display: block; font-weight: 600; margin-bottom: 2px; cursor: pointer; }
+.need li:has(input:checked) label { color: var(--legend); }
+.need li > div > span { color: var(--legend); font-size: 13px; line-height: 1.5; }
+
 /* "Other systems": a native disclosure, opened as a small menu */
 details.menu { position: relative; margin-top: auto; padding-top: var(--s3); }
 details.menu summary { cursor: pointer; color: var(--rx-text); font-size: 13px; font-weight: 600; list-style: none;
@@ -510,6 +549,9 @@ const LINKS = {
   imagerLinux: "https://downloads.raspberrypi.com/imager/imager_latest_amd64.AppImage",
   os: "https://downloads.raspberrypi.com/raspios_lite_arm64_latest",
   osAll: "https://www.raspberrypi.com/software/operating-systems/",
+  osSha: "https://downloads.raspberrypi.com/raspios_lite_arm64_latest.sha256",
+  etcher: "https://etcher.balena.io/",
+  rufus: "https://rufus.ie/",
 };
 const ext = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, text);
 
@@ -542,6 +584,29 @@ function osIcon(k) {
   return svg;
 }
 
+// What to have at hand: one item per thing the wizard asks for
+const NEEDS = [
+  ["The hardware", "A Raspberry Pi Zero 2 W, 3 or 4, an MMDVM_HS hat, and an SD card of 8 GB or more."],
+  ["Callsign and DMR ID", ["Your 7-digit ID from ", ["radioid.net", "https://radioid.net/"], ". The wizard can look it up."]],
+  ["Hotspot security password", ["Set in BrandMeister ", ["SelfCare", "https://brandmeister.network/#/selfcare"],
+    ". Not your BrandMeister login."]],
+  ["Two free frequencies", "One for a simplex hat. Pick ones your licence and band plan allow for hotspots."],
+  ["Wi-Fi name and password", "A 2.4 GHz network: a Pi Zero 2 W can't see 5 GHz. Or an Ethernet cable on a Pi 3 or 4."],
+  ["A way to log in", "An SSH public key, or a password you choose here."],
+  ["SelfCare API key", "To change talkgroups from the dashboard. You can add it later.", true],
+];
+function needEl() {
+  const text = t => (Array.isArray(t) ? t : [t]).map(x => Array.isArray(x) ? ext(x[1], x[0]) : x);
+  return h("section", { class: "need", "aria-labelledby": "need-h" },
+    h("h3", { class: "sub", id: "need-h" }, "What you'll need"),
+    h("ul", {}, NEEDS.map(([title, body, optional], i) => h("li", { class: optional ? "opt-item" : null },
+      // real checkboxes, to tick off while gathering things (kept for this session only)
+      h("input", { type: "checkbox", id: `need-${i}`, checked: !!(S.need && S.need[i]),
+        onchange: e => { (S.need = S.need || {})[i] = e.target.checked; } }),
+      h("div", {}, h("label", { for: `need-${i}` }, title, optional ? h("span", { class: "tag" }, "Optional") : null),
+        h("span", {}, text(body)))))));
+}
+
 function intro() {
   // one button for this computer's system, the others in a menu
   const ua = navigator.userAgent;
@@ -554,40 +619,70 @@ function intro() {
       : { href: LINKS.imagerLinux, name: "Linux", note: "AppImage for x86-64 PCs" },
   };
   const others = ["win", "mac", "linux"].filter(k => k !== mine);
+  const flash = S.flash || "imager";
+  const pick = (val, name, desc) => h("label", { class: "opt" + (flash === val ? " sel" : "") + (S.picked === "flash" && flash === val ? " picked" : "") },
+    h("input", { type: "radio", name: "flash", value: val, checked: flash === val,
+      onchange: () => { S.flash = val; S.picked = "flash"; render(); } }),
+    h("b", {}, name), h("span", {}, desc));
+  const imagerBox = h("div", {},
+    h("h3", { class: "sub" }, "Raspberry Pi Imager"),
+    h("p", {}, "Downloads the OS and writes it to the card."),
+    h("a", { class: "dl", href: imager[mine].href, target: "_blank", rel: "noopener" },
+      osIcon(mine), `Download for ${imager[mine].name}`),
+    h("p", { class: "dl-note" }, imager[mine].note),
+    h("details", { class: "menu" },
+      h("summary", {}, "Other systems"),
+      h("div", { class: "menu-list" },
+        others.map(k => h("a", { href: imager[k].href, target: "_blank", rel: "noopener" },
+          osIcon(k), h("span", {}, imager[k].name, h("small", {}, imager[k].note)))),
+        h("a", { class: "all", href: LINKS.imager, target: "_blank", rel: "noopener" }, "All downloads on raspberrypi.com"))));
+  const imageBox = h("div", {},
+    h("h3", { class: "sub" }, "Raspberry Pi OS Lite (64-bit)"),
+    h("p", {}, "The latest release, about 550 MB."),
+    h("a", { class: "dl", href: LINKS.os }, "Download the image"),
+    h("p", { class: "dl-note" }, "A compressed .img.xz; flashing tools take it as it is."),
+    h("p", { class: "more" }, ext(LINKS.osSha, "SHA-256 checksum"), " · ", ext(LINKS.osAll, "All images")));
+  const toolBox = h("div", {},
+    h("h3", { class: "sub" }, "A flashing tool"),
+    h("p", {}, "Any tool that writes a disk image works."),
+    h("a", { class: "dl", href: LINKS.etcher, target: "_blank", rel: "noopener" }, "Get balenaEtcher"),
+    h("p", { class: "dl-note" }, "Free, for Windows, macOS and Linux."),
+    h("p", { class: "more" }, mine === "win" ? [ext(LINKS.rufus, "Rufus"), " also works on Windows."]
+      : mine === "linux" ? "Or use dd, below." : "Or any tool you already use."));
+
+  const steps = flash === "imager" ? [
+    h("li", {}, "In Imager, choose your Pi, then ", h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"),
+      ", then the SD card."),
+    h("li", {}, "If Imager offers to customise the OS, ", h("b", {}, "skip it"),
+      ". This installer sets the user, Wi-Fi and hostname itself."),
+  ] : [
+    h("li", {}, "Write the downloaded image to the SD card with your tool, as it is: no need to unpack it.",
+      mine === "linux" ? [
+        h("code", { class: "cmd" }, "lsblk   # find the card: /dev/sdX or /dev/mmcblkN\n" +
+          "xzcat ~/Downloads/*-raspios-*-arm64-lite.img.xz \\\n" +
+          "  | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress"),
+        h("div", { class: "warn inline", role: "note" }, warnIcon(),
+          h("div", {}, "Check the device name twice: dd overwrites whatever disk you point it at, without asking.")),
+      ] : null),
+    h("li", {}, "Don't add any files to the card yourself (", h("code", {}, "ssh"), ", ", h("code", {}, "userconf.txt"),
+      ", Wi-Fi settings). This installer writes everything the Pi needs."),
+  ];
   return [
     resumeEl(),
     h("h2", {}, "Before you start"),
     h("p", { class: "lede" }, "This writes a hotspot setup onto a freshly flashed SD card. The Pi installs DMRHost" +
       " and the dmrdash dashboard on its first boot."),
-    h("div", { class: "get" },
-      h("div", {},
-        h("h3", { class: "sub" }, "Raspberry Pi Imager"),
-        h("p", {}, "Writes the OS to the SD card."),
-        h("a", { class: "dl", href: imager[mine].href, target: "_blank", rel: "noopener" },
-          osIcon(mine), `Download for ${imager[mine].name}`),
-        h("p", { class: "dl-note" }, imager[mine].note),
-        h("details", { class: "menu" },
-          h("summary", {}, "Other systems"),
-          h("div", { class: "menu-list" },
-            others.map(k => h("a", { href: imager[k].href, target: "_blank", rel: "noopener" },
-              osIcon(k), h("span", {}, imager[k].name, h("small", {}, imager[k].note)))),
-            h("a", { class: "all", href: LINKS.imager, target: "_blank", rel: "noopener" }, "All downloads on raspberrypi.com")))),
-      h("div", {},
-        h("h3", { class: "sub" }, "Raspberry Pi OS Lite (64-bit)"),
-        h("p", {}, "The latest release, about 550 MB."),
-        h("a", { class: "dl", href: LINKS.os }, "Download the image"),
-        h("p", { class: "dl-note" }, "Or pick it inside Imager instead."),
-        h("p", { class: "more" }, ext(LINKS.osAll, "All Raspberry Pi OS images")))),
-    h("ol", { class: "how" },
-      h("li", {}, "In Imager, choose your Pi, then the OS: ", h("b", {}, "Use custom"),
-        " with the image you downloaded, or ", h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"),
-        ". Then choose the SD card."),
-      h("li", {}, "If Imager offers to customise the OS, ", h("b", {}, "skip it"),
-        ". This installer sets the user, Wi-Fi and hostname itself."),
+    needEl(),
+    h("h3", { class: "sub" }, "How will you flash the card?"),
+    h("div", { class: "choices flash", role: "radiogroup", "aria-label": "How will you flash the card?" },
+      pick("imager", "Raspberry Pi Imager", "Recommended. Imager downloads the OS for you."),
+      pick("self", "I'll flash it myself", "Download the image and write it with Etcher, dd or similar.")),
+    h("div", { class: "get" }, flash === "imager" ? [imagerBox] : [imageBox, toolBox]),
+    h("ol", { class: "how" }, steps,
       h("li", {}, "When it's done, take the card out and put it back in, so your computer mounts its ",
         h("b", {}, "bootfs"), " partition."),
       h("li", {}, "Answer the questions here, then pick the card and write.")),
-    h("p", { class: "muted" }, "You can fill in the answers while Imager is still writing."),
+    h("p", { class: "muted" }, "You can fill in the answers while the card is being written."),
     S.dmrdash ? null :
       h("div", { class: "note" }, "No dmrdash package is bundled (payload/dmrdash_*_all.deb). " +
         "The Pi will try to download it from GitHub and skips the dashboard if it can't."),
@@ -636,8 +731,30 @@ function idsEl() {
   return box;
 }
 
+// The Dashboard step's pitch: what dmrdash (the version on the card, 1.0.0) does
+const DASH_FEATURES = [
+  ["Both timeslots, live", "Who's talking, on which talkgroup, their name and talker alias, with a running timer. Like a dual-VFO radio."],
+  ["Talkgroups from your phone", "Add and remove static talkgroups on either slot without logging in to SelfCare. Removals can be undone.", true],
+  ["Presets", "Save sets like \u201cEveryday\u201d or \u201cNet night\u201d and switch in one tap. Only what differs is changed.", true],
+  ["Stop call", "Drop the current call route straight from the dashboard.", true],
+  ["Last heard", "Sort, filter, hide kerchunks and colour by caller or talkgroup. Callsigns open QRZ.com, talkgroups open Hoseline."],
+  ["Live log", "The hotspot's log as it happens, kept in RAM."],
+];
+function pitchEl() {
+  return h("section", { class: "pitch", "aria-label": "What dmrdash does" },
+    h("p", { class: "lede" }, "dmrdash is your hotspot's front panel, in any browser on your network: your phone, laptop or tablet."),
+    h("figure", {},
+      h("img", { src: "/assets/dmrdash.webp", width: 1400, height: 580, loading: "lazy",
+        alt: "dmrdash showing both timeslots live, CT7BLE transmitting on timeslot 1 and VK2ABCD on timeslot 2, with the Last heard list below" }),
+      h("figcaption", {}, "dmrdash on a desktop browser. It fits a phone too.")),
+    h("ul", { class: "feats" }, DASH_FEATURES.map(([t, d, key]) => h("li", {},
+      h("b", {}, t, key ? h("span", { class: "tag" }, "API key") : null), h("span", {}, d)))),
+    h("p", { class: "muted small" }, "Light on the Pi: about 26 MB of memory, and nothing written to the SD card in normal use."));
+}
+
 function section(s) {
   const kids = [h("h2", {}, s.title)];
+  if (s.id === "dashboard") kids.push(pitchEl());
   const pair = new Set(["dmr_id", "id_suffix", "rx_freq", "tx_freq", "rx_offset", "color_code", "wifi_password", "wifi_country", "pin", "port"]);
   let row = null;
   for (const f of s.fields) {
