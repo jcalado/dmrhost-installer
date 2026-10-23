@@ -9,21 +9,24 @@
   --panel: #1d2023; --panel-2: #24282c; --panel-3: #2c3136; --rule: #3a4046; --rule-2: #4a5158;
   --legend: #b3bac2; --legend-dim: #8d959e; --white: #eef1f3;
   --lcd: #e4e0cc; --lcd-ink: #17190f; --lcd-dim: #5c5946;
-  --rx: #35b46a; --rx-text: #8fe0b0; --busy: #f0a020; --fail-text: #ff8a8d; --alarm-bg: #3a1e20;
+  --rx: #35b46a; --rx-text: #8fe0b0; --busy: #f0a020;
+  --warn-bg: #2a2418; --warn-rule: #5a4520; --warn-text: #f3d9a4; --warn-link: #ffd88a; --fail-text: #ff8a8d; --alarm-bg: #3a1e20;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* spacing: tight inside a field, wider between fields, widest around actions */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--panel); color: var(--white); font: 14px/1.45 var(--sans); }
-.wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: var(--s6) var(--s4) 64px; }
+header { display: flex; align-items: baseline; gap: var(--s3); margin-bottom: var(--s5); }
 header h1 { font-size: 17px; font-weight: 600; margin: 0; }
 header .ver { color: var(--legend-dim); font: 12px var(--mono); }
 
 /* Step bar: each segment fills like an LED meter. On "Card ready" they all light in turn. */
-ol.steps { list-style: none; display: flex; gap: 4px; padding: 0; margin: 0 0 20px; flex-wrap: wrap; }
+ol.steps { list-style: none; display: flex; gap: var(--s1); padding: 0; margin: 0 0 var(--s5); flex-wrap: wrap; }
 ol.steps li { position: relative; flex: 1 1 0; min-width: 84px; padding: 8px 10px 6px; border-top: 3px solid var(--rule);
   color: var(--legend-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
   transition: color .2s var(--ease-out); }
@@ -36,6 +39,13 @@ ol.steps li.on { color: var(--white); }
 ol.steps li.on::before { transform: scaleX(1); }
 ol.steps.lit li { color: var(--white); }
 ol.steps.lit li::before { transform: scaleX(1); background: var(--rx); transition-delay: calc(var(--i) * 70ms); }
+@media (max-width: 560px) {
+  /* one row: segments only, with room for the current step's name */
+  ol.steps { flex-wrap: nowrap; }
+  ol.steps li { min-width: 0; padding: var(--s2) 0 0; white-space: nowrap; overflow: hidden; transition: flex-grow .3s var(--ease-out); }
+  ol.steps li:not(.on) { font-size: 0; }
+  ol.steps li.on { flex-grow: 3; }
+}
 
 /* Step content arrives from the direction of travel */
 .view.fwd { animation: in-fwd .26s var(--ease-out); }
@@ -43,48 +53,97 @@ ol.steps.lit li::before { transform: scaleX(1); background: var(--rx); transitio
 @keyframes in-fwd { from { opacity: 0; transform: translateX(14px); } }
 @keyframes in-back { from { opacity: 0; transform: translateX(-14px); } }
 
-.card { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; }
-.card h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
-.card p.lede { color: var(--legend); margin: 0 0 18px; }
+.card { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: var(--s6); }
+@media (max-width: 560px) { .card { padding: var(--s5) var(--s4); } }
+.card h2 { font-size: 17px; font-weight: 600; margin: 0 0 var(--s5); }
+.card h2:has(+ p.lede) { margin-bottom: var(--s2); }
+.card p.lede { color: var(--legend); margin: 0 0 var(--s5); max-width: 62ch; }
 
-.field { margin: 0 0 16px; }
-.field label.l { display: block; font-weight: 600; margin-bottom: 5px; }
-.field .help { color: var(--legend-dim); font-size: 13px; margin-top: 4px; }
-.field .err { color: var(--fail-text); font-size: 13px; margin-top: 4px; }
+.field { margin: 0 0 var(--s5); }
+.field label.l { display: block; font-weight: 600; margin-bottom: var(--s2); }
+.field .help { color: var(--legend-dim); font-size: 13px; margin-top: var(--s2); max-width: 62ch; }
+.field .err { color: var(--fail-text); font-size: 13px; margin-top: var(--s2); }
+.field .err + .help { margin-top: var(--s1); }
+.field .warn { display: flex; gap: var(--s3); align-items: flex-start; margin-top: var(--s3);
+  padding: var(--s3) var(--s4); border: 1px solid var(--warn-rule); border-radius: 4px;
+  background: var(--warn-bg); color: var(--warn-text); font-size: 13px; line-height: 1.5; }
+.field .warn svg { flex: none; margin-top: 1px; color: var(--busy); }
+.field .warn b { color: var(--white); font-weight: 600; }
+.field .warn a { color: var(--warn-link); overflow-wrap: anywhere; }
+.field .warn + .help { margin-top: var(--s2); }
+.field .find { margin-top: var(--s3); padding: var(--s3) var(--s4); border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--panel); font-size: 13px; line-height: 1.5; }
+.field .find a { font-weight: 600; }
+.field .find > div + div { margin-top: var(--s1); }
 .field .err.new { animation: err-in .2s var(--ease-out); }
 @keyframes err-in { from { opacity: 0; transform: translateY(-3px); } }
 input, textarea, select { transition: border-color .15s var(--ease-out); }
 .field.bad input, .field.bad textarea, .field.bad select { border-color: var(--fail-text); }
 input[type=text], input[type=password], textarea, select {
   width: 100%; background: var(--panel); color: var(--white); border: 1px solid var(--rule-2);
-  border-radius: 4px; padding: 8px 10px; font: 14px var(--sans); }
+  border-radius: 4px; padding: 10px var(--s3); font: 14px var(--sans); }
 input.mono, textarea { font-family: var(--mono); font-size: 13px; }
 textarea { min-height: 70px; resize: vertical; }
 input:focus, textarea:focus, select:focus, button:focus-visible, .opt:focus-within {
   outline: 2px solid var(--rx); outline-offset: 1px; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s5); }
 @media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } }
 
-.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
-.opt { display: block; border: 1px solid var(--rule-2); border-radius: 4px; padding: 9px 11px; cursor: pointer;
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s2); }
+.opt { display: block; border: 1px solid var(--rule-2); border-radius: 4px; padding: var(--s3) 14px; cursor: pointer;
   background: var(--panel); }
 .opt input { position: absolute; opacity: 0; }
-.opt b { display: block; font-weight: 600; }
+.opt b { display: block; font-weight: 600; margin-bottom: 2px; }
 .opt span { color: var(--legend-dim); font-size: 13px; }
 .opt { transition: border-color .15s var(--ease-out), background-color .15s var(--ease-out); }
 .opt:hover:not(.sel) { border-color: var(--legend-dim); }
 .opt.sel { border-color: var(--rx); background: var(--panel-3); }
 .opt.picked { animation: picked .22s var(--ease-out); }
 @keyframes picked { from { border-color: var(--rule-2); background: var(--panel); } }
+/* radioid.net suggestions under DMR ID / ESSID */
+.ids:empty { display: none; }
+.ids { margin: calc(-1 * var(--s2)) 0 var(--s5); }
+.ids p { margin: 0; font-size: 13px; }
+.ids-head { color: var(--legend); margin-bottom: var(--s2) !important; }
+.id-list { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.id-chip { display: grid; grid-template-columns: auto 1fr; column-gap: var(--s3); align-items: baseline; text-align: left;
+  padding: var(--s2) var(--s3); background: var(--panel); font-weight: 400; }
+.ids.new { animation: fade .15s ease-out; }
+input.upper { text-transform: uppercase; }
+input.upper::placeholder { text-transform: none; }
+.id-chip b { font: 600 14px var(--mono); }
+.id-chip span { color: var(--legend); font-size: 13px; }
+.id-chip small { grid-column: 2; color: var(--legend-dim); font-size: 12px; }
+.id-chip.sel { border-color: var(--rx); background: var(--panel-3); }
+.id-chip.sel b { color: var(--rx-text); }
+
+/* Master search: the list drops over the fields below and scrolls */
+.combo { position: relative; }
+.combo-list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + var(--s1)); max-height: 300px;
+  overflow-y: auto; background: var(--panel); border: 1px solid var(--rule-2); border-radius: 4px;
+  padding: var(--s1) 0; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); animation: fade .12s ease-out; }
+.combo-group { display: flex; justify-content: space-between; padding: var(--s3) var(--s3) var(--s1);
+  color: var(--legend); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.combo-group span { color: var(--legend-dim); font: 12px var(--mono); }
+.combo-opt { display: flex; gap: var(--s3); align-items: baseline; padding: 7px var(--s3) 7px var(--s5); cursor: pointer;
+  font: 13px var(--mono); }
+.combo-opt b { font-weight: 600; min-width: 4ch; }
+.combo-opt span { color: var(--legend-dim); }
+.combo-opt.on, .combo-opt:hover { background: var(--panel-3); }
+.combo-opt[aria-selected=true] b { color: var(--rx-text); }
+.combo-opt.typed { padding-left: var(--s3); font-family: var(--sans); border-top: 1px solid var(--rule); margin-top: var(--s1); }
+.combo-opt.typed b { font-family: var(--mono); }
+.combo-empty { padding: var(--s3); color: var(--legend-dim); }
 .switch { display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 600; }
 .switch input { width: 18px; height: 18px; accent-color: var(--rx); }
 
-.lcd { background: var(--lcd); color: var(--lcd-ink); border-radius: 4px; padding: 10px 14px; margin: 4px 0 18px;
-  font: 600 15px var(--mono); display: flex; gap: 18px; flex-wrap: wrap; }
+.lcd { background: var(--lcd); color: var(--lcd-ink); border-radius: 4px; padding: var(--s3) var(--s4); margin: calc(-1 * var(--s2)) 0 var(--s5);
+  font: 600 15px var(--mono); display: flex; gap: var(--s2) var(--s5); flex-wrap: wrap; }
 .lcd small { color: var(--lcd-dim); font-weight: 600; font-size: 11px; display: block; letter-spacing: .08em; }
 
-nav.btns { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
-button { font: 600 14px var(--sans); padding: 9px 18px; border-radius: 4px; border: 1px solid var(--rule-2);
+nav.btns { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); margin-top: var(--s6);
+  padding-top: var(--s5); border-top: 1px solid var(--rule); }
+button { font: 600 14px var(--sans); padding: 10px 20px; border-radius: 4px; border: 1px solid var(--rule-2);
   background: var(--panel-3); color: var(--white); cursor: pointer; }
 button.go { background: var(--rx); border-color: var(--rx); color: #08140d; }
 button:disabled { opacity: .5; cursor: default; }
@@ -116,30 +175,80 @@ button.busy::after { content: ""; position: absolute; left: 0; bottom: 0; width:
   button:active:not(:disabled) { transform: none; }
   button.busy::after { width: 100%; animation: pulse 1.2s ease-in-out infinite alternate; }
   .ready path { animation: none; stroke-dashoffset: 0; }
+  .radar { animation: pulse 1.2s ease-in-out infinite alternate; box-shadow: none; }
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes pulse { from { opacity: .2; } to { opacity: .7; } }
 
-ol.how { padding-left: 20px; margin: 0 0 8px; color: var(--legend); }
-ol.how li { margin-bottom: 8px; }
+ol.how { padding-left: 20px; margin: 0 0 var(--s5); color: var(--legend); max-width: 66ch; }
+ol.how li { margin-bottom: var(--s3); padding-left: var(--s1); }
+ol.how li:last-child { margin-bottom: 0; }
 ol.how b { color: var(--white); }
-table.sum { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
-table.sum th, table.sum td { text-align: left; padding: 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
-table.sum th { color: var(--legend); font-weight: 400; width: 38%; padding-right: 12px; }
-table.sum td { font-family: var(--mono); font-size: 13px; }
-.vol { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--rule-2); border-radius: 4px;
-  padding: 9px 11px; margin-bottom: 8px; cursor: pointer; background: var(--panel); }
+/* Write step: grouped review, then the card */
+.lcd.review { margin: 0 0 var(--s5); }
+.review-groups { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: 0 0 var(--s6); }
+@media (max-width: 640px) { .review-groups { grid-template-columns: 1fr; } }
+.rgroup { border: 1px solid var(--rule); border-radius: 4px; padding: var(--s3) var(--s4) var(--s4); background: var(--panel); }
+.rgroup header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--s2); }
+.rgroup h3.sub { margin: 0; }
+.rgroup dl { margin: 0; }
+.rgroup dt { color: var(--legend-dim); font-size: 12px; margin-top: var(--s3); }
+.rgroup dt:first-child { margin-top: 0; }
+.rgroup dd { margin: 2px 0 0; font: 13px var(--mono); overflow-wrap: break-word; }
+button.to-review { margin-left: auto; }
+button.link { background: none; border: 0; padding: 2px 0; color: var(--rx-text); font: 600 13px var(--sans);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+button.link:hover:not(:disabled) { filter: brightness(1.15); }
+h3.card-head { margin-bottom: var(--s3); }
+.waiting { display: flex; gap: var(--s4); align-items: center; padding: var(--s4); border: 1px dashed var(--rule-2);
+  border-radius: 4px; background: var(--panel); margin-bottom: var(--s3); }
+.waiting b { display: block; font-weight: 600; margin-bottom: 2px; }
+.radar { flex: none; width: 12px; height: 12px; margin: 0 4px; border-radius: 50%; background: var(--busy);
+  box-shadow: 0 0 0 0 rgba(240, 160, 32, .5); animation: ping 1.6s var(--ease-out) infinite; }
+@keyframes ping { to { box-shadow: 0 0 0 10px rgba(240, 160, 32, 0); } }
+.vol-hint { margin: var(--s2) 0 0; font-size: 13px; }
+p.fine { margin: var(--s5) 0 0; font-size: 13px; max-width: 62ch; }
+.vol { display: flex; gap: var(--s3); align-items: flex-start; cursor: pointer; border: 1px solid var(--rule-2); border-radius: 4px;
+  padding: var(--s3) 14px; margin-bottom: var(--s2); cursor: pointer; background: var(--panel); }
 .vol.sel { border-color: var(--rx); background: var(--panel-3); }
 .vol.no { cursor: default; opacity: .7; }
 .vol code { font-family: var(--mono); }
+.vol input { accent-color: var(--rx); margin: 3px 0 0; }
 .vol .st { color: var(--legend-dim); font-size: 13px; }
 .vol.no .st { color: var(--busy); }
-.note { background: var(--panel); border-left: 3px solid var(--busy); padding: 10px 12px; color: var(--legend); margin: 12px 0; }
-.alarm { background: var(--alarm-bg); color: var(--fail-text); padding: 10px 12px; border-radius: 4px; margin: 12px 0; }
+.note { background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: var(--s3) var(--s4); color: var(--legend); margin: 0 0 var(--s4); }
+.note::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--busy); margin-right: var(--s2); vertical-align: 1px; }
+.alarm { background: var(--alarm-bg); color: var(--fail-text); padding: var(--s3) var(--s4); border-radius: 4px; margin: var(--s4) 0 0; }
 .ok { color: var(--rx-text); }
 code.cmd { display: block; background: var(--panel); border: 1px solid var(--rule); padding: 8px 10px; border-radius: 4px;
-  font: 13px var(--mono); overflow-x: auto; white-space: pre; margin: 6px 0 12px; }
+  font: 13px var(--mono); overflow-x: auto; white-space: pre; margin: var(--s3) 0 var(--s5); }
 .muted { color: var(--legend-dim); }
+h3.sub { font-size: 14px; font-weight: 600; margin: 0 0 var(--s3); }
+/* Start: resume where you left off */
+.resume { display: flex; flex-wrap: wrap; gap: var(--s4); align-items: center; justify-content: space-between;
+  padding: var(--s4); margin: 0 0 var(--s6); border: 1px solid var(--rx); border-radius: 4px; background: var(--panel-3); }
+.resume > div:first-child { flex: 1 1 320px; }
+.resume b { display: block; font-weight: 600; margin-bottom: var(--s1); }
+.resume p { margin: 0; color: var(--legend); font-size: 13px; max-width: 62ch; }
+.resume-btns { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+/* Start: the two downloads side by side */
+.get { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); margin: 0 0 var(--s6); }
+@media (max-width: 560px) { .get { grid-template-columns: 1fr; } }
+.get > div { border: 1px solid var(--rule); border-radius: 4px; padding: var(--s4); background: var(--panel); }
+.get h3.sub { margin-bottom: var(--s1); }
+.get p { margin: 0 0 var(--s3); color: var(--legend); }
+.get p.muted { margin: var(--s3) 0 0; font-size: 13px; color: var(--legend-dim); }
+.links { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.links a { display: inline-block; padding: 7px var(--s3); border: 1px solid var(--rule-2); border-radius: 4px;
+  color: var(--white); text-decoration: none; font-weight: 600; font-size: 13px;
+  transition: border-color .15s var(--ease-out), filter .15s; }
+.links a:hover { border-color: var(--legend-dim); }
+.links a.main { background: var(--rx); border-color: var(--rx); color: #08140d; }
+.links a.main:hover { filter: brightness(1.08); }
+a { color: var(--rx-text); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--rx); outline-offset: 2px; }
+.field.typed { margin-top: var(--s3); }
 </style>
 </head>
 <body>
@@ -194,7 +303,7 @@ function renderSteps() {
 
 function fieldEl(f) {
   const id = "f-" + f.key, v = S.answers[f.key] ?? "", err = S.errors[f.key];
-  const set = val => { S.answers[f.key] = val; delete S.errors[f.key]; };
+  const set = val => { S.answers[f.key] = val; delete S.errors[f.key]; saveSoon(); };
   let input;
   if (f.kind === "choice") {
     input = h("div", { class: "choices", role: "radiogroup", "aria-labelledby": id + "-l" },
@@ -215,40 +324,146 @@ function fieldEl(f) {
   } else {
     input = h("input", { id, type: f.kind === "password" ? "password" : "text", value: v,
       placeholder: f.placeholder || null, autocomplete: "off", spellcheck: "false",
-      class: ["freq", "password"].includes(f.kind) || f.key === "rx_offset" ? "mono" : null,
+      class: [["freq", "password"].includes(f.kind) || f.key === "rx_offset" ? "mono" : "", f.upper ? "upper" : ""].join(" ").trim() || null,
       inputmode: f.kind === "freq" ? "decimal" : null,
       oninput: e => {
         const was = !!S.answers[f.key];
         set(f.upper ? e.target.value.toUpperCase() : e.target.value);
         // fields shown "when" this one is filled in appear or go as it empties
         if (was !== !!S.answers[f.key] && S.sections.some(s => s.fields.some(g => g.when && g.when[0] === f.key))) render();
-        else if (f.kind === "freq") refreshLive(); } });
+        else if (f.kind === "freq") refreshLive();
+        if (f.key === "callsign") lookupIds(); } });
   }
   return h("div", { class: "field" + (err ? " bad" : ""), "data-key": f.key },
     h("label", { class: "l", for: f.kind === "choice" ? null : id, id: id + "-l" }, f.label),
     input,
     err ? h("div", { class: S.freshErrors ? "err new" : "err" }, err) : null,
-    f.help ? h("div", { class: "help" }, f.help) : null);
+    f.warn ? h("div", { class: "warn", role: "note" }, warnIcon(),
+      h("div", {}, f.warn, f.link ? [" ", ext(f.link, f.link.replace(/^https:\/\//, ""))] : null)) : null,
+    f.help ? h("div", { class: "help" }, f.help) : null,
+    f.find ? findEl(f) : null);
+}
+
+// "Where to find it", with a deep link built from the callsign when there is one
+function findEl(f) {
+  const call = (S.answers.callsign || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const link = f.find_link && (call || !f.find_link.includes("{callsign}")) ? f.find_link.replace("{callsign}", call) : "";
+  return h("div", { class: "find" },
+    link ? h("div", {}, ext(link, f.find_link_text || link), h("span", { class: "muted" }, " (opens BrandMeister)")) : null,
+    h("div", { class: "muted" }, f.find));
 }
 
 function masterEl(f, set) {
   const v = S.answers.master ?? "";
   if (S.masters === null) {
     api("/api/masters").then(m => { S.masters = m; preselectMaster(); render(); });
-    return h("select", { disabled: true }, h("option", {}, "Fetching the BrandMeister master list…"));
+    return h("input", { type: "text", disabled: true, value: "Fetching the BrandMeister master list…" });
   }
-  const known = S.masters.some(m => String(m.id) === v);
-  const other = !known && (v !== "" || S.masters.length === 0 || S.masterOther);
-  const sel = h("select", { id: "f-master", onchange: e => {
-      S.masterOther = e.target.value === "other";
-      set(S.masterOther ? "" : e.target.value); render(); } },
-    h("option", { value: "", disabled: true, selected: !known && !other }, "Choose a master"),
-    S.masters.map(m => h("option", { value: String(m.id), selected: String(m.id) === v },
-      `${m.id} · ${m.country} · ${m.address}`)),
-    h("option", { value: "other", selected: other }, S.masters.length ? "Another address…" : "Type the address (offline)"));
-  if (!other) return sel;
-  return h("div", {}, sel, h("input", { type: "text", class: "mono", value: v, placeholder: "host or host:port",
-    style: "margin-top:8px", oninput: e => set(e.target.value) }));
+  return masterPicker(v, set);
+}
+
+// BrandMeister only gives country codes; the browser knows their names.
+const regionName = (() => {
+  let dn = null;
+  try { dn = new Intl.DisplayNames(["en"], { type: "region" }); } catch (_) { /* old browser: codes only */ }
+  return cc => { try { return (dn && dn.of(cc)) || cc; } catch (_) { return cc; } };
+})();
+const fold = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const looksLikeAddress = q => /[.:]/.test(q) && !/\s/.test(q);
+
+function masterLabel(v) {
+  const m = (S.masters || []).find(m => String(m.id) === v);
+  return m ? `${m.id} · ${regionName(m.country)}` : v;
+}
+
+// A searchable list of masters, grouped by country A–Z. A country name or code, a master ID
+// or an address filters it; an address can also be used as typed.
+function masterPicker(v, set) {
+  const rows = S.masters.map(m => ({ ...m, name: regionName(m.country) }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  const list = h("div", { class: "combo-list", id: "f-master-list", role: "listbox", hidden: true });
+  const input = h("input", { id: "f-master", type: "text", role: "combobox", autocomplete: "off",
+    spellcheck: "false", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": "f-master-list",
+    placeholder: rows.length ? "Search: Portugal, PT, 2682…" : "Master address, optionally host:port",
+    value: masterLabel(v) });
+  let shown = [], active = -1;
+  const current = () => S.answers.master ?? "";
+
+  function matches(q) {
+    q = fold(q.trim());
+    if (!q || q === fold(masterLabel(current()))) return rows.slice();  // a copy: paint() appends to it
+    return rows.filter(m => fold(m.name).includes(q) || m.country.toLowerCase() === q ||
+      String(m.id).startsWith(q) || m.address.startsWith(q));
+  }
+  function choose(val) {
+    S.masterTouched = true;
+    set(val); input.value = masterLabel(val); close();
+    const f = input.closest(".field");
+    f.classList.remove("bad");
+    const e = $(".err", f); if (e) e.remove();
+  }
+  function paint() {
+    const q = input.value.trim();
+    shown = matches(q);
+    if (looksLikeAddress(q)) shown.push({ typed: q });
+    list.replaceChildren();
+    let group = null;
+    shown.forEach((m, i) => {
+      const cls = "combo-opt" + (i === active ? " on" : "");
+      const pick = e => { e.preventDefault(); choose(m.typed || String(m.id)); };
+      if (m.typed) {
+        list.append(h("div", { class: cls + " typed", role: "option", id: `f-master-o${i}`, onmousedown: pick },
+          "Use ", h("b", {}, m.typed)));
+        return;
+      }
+      if (m.country !== group) {
+        list.append(h("div", { class: "combo-group", role: "presentation" }, m.name, h("span", {}, m.country)));
+        group = m.country;
+      }
+      list.append(h("div", { class: cls, role: "option", id: `f-master-o${i}`, onmousedown: pick,
+        "aria-selected": String(m.id) === current() ? "true" : "false" },
+        h("b", {}, m.id), h("span", {}, m.address)));
+    });
+    if (!shown.length) list.append(h("div", { class: "combo-empty" }, "No master matches. Type an address to use it as is."));
+    input.setAttribute("aria-activedescendant", active >= 0 && shown[active] ? `f-master-o${active}` : "");
+    const on = $(".combo-opt.on", list);
+    if (on) on.scrollIntoView({ block: "nearest" });
+  }
+  function open() { list.hidden = false; input.setAttribute("aria-expanded", "true"); paint(); }
+  function close() { list.hidden = true; input.setAttribute("aria-expanded", "false"); active = -1; }
+
+  let justFocused = false;
+  input.addEventListener("focus", () => { input.select(); justFocused = true; open(); });
+  // the click that focused the box would otherwise undo the select-all on mouseup
+  input.addEventListener("mouseup", e => { if (justFocused) e.preventDefault(); justFocused = false; });
+  // clicking the box again after a pick starts a new search
+  input.addEventListener("click", () => { if (list.hidden) { input.select(); open(); } });
+  input.addEventListener("input", () => { active = 0; open(); });
+  input.addEventListener("blur", () => {
+    // a typed address counts; a half-typed search goes back to the last choice
+    const q = input.value.trim();
+    if (!rows.length || looksLikeAddress(q)) set(q);
+    else input.value = masterLabel(current());
+    close();
+  });
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (list.hidden) return open();
+      const n = shown.length;
+      if (!n) return;
+      active = e.key === "ArrowDown" ? (active + 1) % n : (active - 1 + n) % n;
+      paint();
+    } else if (e.key === "Enter" && !list.hidden && shown[active]) {
+      e.preventDefault();
+      choose(shown[active].typed || String(shown[active].id));
+    } else if (e.key === "Escape" && !list.hidden) {
+      e.preventDefault();
+      input.value = masterLabel(current());
+      close();
+    }
+  });
+  return h("div", { class: "combo" }, input, list);
 }
 
 function preselectMaster() {
@@ -270,30 +485,113 @@ function refreshLive() {
     h("div", {}, h("small", {}, "SLOTS"), duplex ? "TS1 + TS2" : "TS2"));
 }
 
+const LINKS = {
+  imager: "https://www.raspberrypi.com/software/",
+  imagerWin: "https://downloads.raspberrypi.com/imager/imager_latest.exe",
+  imagerMac: "https://downloads.raspberrypi.com/imager/imager_latest.dmg",
+  os: "https://downloads.raspberrypi.com/raspios_lite_arm64_latest",
+  osAll: "https://www.raspberrypi.com/software/operating-systems/",
+};
+const ext = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, text);
+
+function resumeEl() {
+  if (!S.saved) return null;
+  const n = S.sections.length, to = Math.max(1, Math.min(S.saved.step, n));
+  const when = new Date(S.saved.saved * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return h("div", { class: "resume", role: "status" },
+    h("div", {}, h("b", {}, "Welcome back"),
+      h("p", {}, `Your answers from ${when} are filled in, up to the ${S.sections[to - 1].title} step. ` +
+        "Passwords, the API key and the PIN aren't saved, so you'll type those again.")),
+    h("div", { class: "resume-btns" },
+      h("button", { class: "go", onclick: () => go(to) }, `Continue at ${S.sections[to - 1].title}`),
+      h("button", { onclick: startOver }, "Start over")));
+}
+
 function intro() {
+  // offer this computer's Imager download first
+  const ua = navigator.userAgent;
+  const mine = /Windows/.test(ua) ? "win" : /Mac OS X|Macintosh/.test(ua) ? "mac" : "linux";
+  const imager = { win: [LINKS.imagerWin, "Imager for Windows"], mac: [LINKS.imagerMac, "Imager for macOS"],
+    linux: [LINKS.imager, "Imager for Linux"] };
+  const order = [mine, ...["win", "mac", "linux"].filter(k => k !== mine)];
   return [
+    resumeEl(),
     h("h2", {}, "Before you start"),
     h("p", { class: "lede" }, "This writes a hotspot setup onto a freshly flashed SD card. The Pi installs DMRHost" +
-      (S.dmrdash !== null ? " and the dmrdash dashboard" : "") + " on its first boot."),
+      " and the dmrdash dashboard on its first boot."),
+    h("div", { class: "get" },
+      h("div", {},
+        h("h3", { class: "sub" }, "Raspberry Pi Imager"),
+        h("p", {}, "Writes the OS to the SD card."),
+        h("div", { class: "links" }, order.map((k, i) =>
+          h("a", { href: imager[k][0], target: "_blank", rel: "noopener", class: i ? "" : "main" }, imager[k][1]))),
+        h("p", { class: "muted" }, "Other systems: ", ext(LINKS.imager, "raspberrypi.com/software"))),
+      h("div", {},
+        h("h3", { class: "sub" }, "Raspberry Pi OS Lite (64-bit)"),
+        h("p", {}, "The latest release, about 550 MB."),
+        h("div", { class: "links" }, h("a", { href: LINKS.os, class: "main" }, "Download the image")),
+        h("p", { class: "muted" }, "Or pick it inside Imager. ", ext(LINKS.osAll, "All Raspberry Pi OS images")))),
     h("ol", { class: "how" },
-      h("li", {}, "In ", h("b", {}, "Raspberry Pi Imager"), ", choose your Pi, then ",
-        h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"), " and the SD card."),
-      h("li", {}, "When Imager offers OS customisation, choose ", h("b", {}, "No"),
+      h("li", {}, "In Imager, choose your Pi, then the OS: ", h("b", {}, "Use custom"),
+        " with the image you downloaded, or ", h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"),
+        ". Then choose the SD card."),
+      h("li", {}, "If Imager offers to customise the OS, ", h("b", {}, "skip it"),
         ". This installer sets the user, Wi-Fi and hostname itself."),
       h("li", {}, "When it's done, take the card out and put it back in, so your computer mounts its ",
         h("b", {}, "bootfs"), " partition."),
       h("li", {}, "Answer the questions here, then pick the card and write.")),
     h("p", { class: "muted" }, "You can fill in the answers while Imager is still writing."),
-    S.dmrdash ? h("p", { class: "muted" }, `Dashboard package: ${S.dmrdash}`) :
+    S.dmrdash ? null :
       h("div", { class: "note" }, "No dmrdash package is bundled (payload/dmrdash_*_all.deb). " +
         "The Pi will try to download it from GitHub and skips the dashboard if it can't."),
     nav(null, "Start"),
   ];
 }
 
+// DMR IDs for the callsign, from radioid.net (through the installer, which has no CORS limits)
+let idTimer = null;
+function lookupIds() {
+  clearTimeout(idTimer);
+  const call = (S.answers.callsign || "").trim();
+  if (!/^[A-Z0-9]{3,8}$/.test(call)) { if (S.ids) { S.ids = null; paintIds(); } return; }
+  if (S.ids && S.ids.call === call) return;
+  idTimer = setTimeout(async () => {
+    const hits = await api("/api/ids?callsign=" + encodeURIComponent(call));
+    if ((S.answers.callsign || "").trim() === call) { S.ids = { call, hits }; paintIds(); }
+  }, 450);
+}
+function paintIds() {
+  const el = $("#ids");
+  if (el) { const box = idsEl(); box.classList.add("new"); el.replaceWith(box); }  // only fresh results fade in
+}
+function idsEl() {
+  const box = h("div", { class: "ids", id: "ids", "aria-live": "polite" });
+  if (!S.ids) return box;
+  if (!S.ids.hits.length) {
+    box.append(h("p", { class: "muted" }, `radioid.net has no DMR ID for ${S.ids.call}.`));
+    return box;
+  }
+  box.append(h("p", { class: "ids-head" }, S.ids.hits.length > 1 ? `${S.ids.call} has ${S.ids.hits.length} IDs on radioid.net:` : `${S.ids.call} on radioid.net:`),
+    h("div", { class: "id-list" }, S.ids.hits.map(r => {
+      const where = [r.city, r.country].filter(Boolean).join(", ");
+      const on = S.answers.dmr_id === String(r.id);
+      return h("button", { type: "button", class: "id-chip" + (on ? " sel" : ""), "aria-pressed": String(on),
+        onclick: () => {
+          S.answers.dmr_id = String(r.id); delete S.errors.dmr_id;
+          // the master this ID last used, unless one was picked by hand
+          if (!S.masterTouched && (S.masters || []).some(m => String(m.id) === r.lastmaster)) S.answers.master = r.lastmaster;
+          render();
+        } },
+        h("b", {}, r.id),
+        h("span", {}, [r.name, where].filter(Boolean).join(" · ")),
+        r.lastheard ? h("small", {}, "last heard " + new Date(r.lastheard).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })) : null);
+    })));
+  return box;
+}
+
 function section(s) {
   const kids = [h("h2", {}, s.title)];
-  const pair = new Set(["rx_freq", "tx_freq", "rx_offset", "color_code", "wifi_password", "wifi_country", "pin", "port"]);
+  const pair = new Set(["dmr_id", "id_suffix", "rx_freq", "tx_freq", "rx_offset", "color_code", "wifi_password", "wifi_country", "pin", "port"]);
   let row = null;
   for (const f of s.fields) {
     if (!visible(f)) continue;
@@ -304,30 +602,58 @@ function section(s) {
       if (row.children.length === 2) row = null;
     } else { row = null; kids.push(el); }
     if (f.key === "hat") kids.push(h("div", { class: "lcd", id: "live" }));
+    if (f.key === "id_suffix") { kids.push(idsEl()); if (!S.ids) lookupIds(); }
   }
-  kids.push(nav("Back", "Next"));
+  const n = nav("Back", "Next");
+  // after an Edit from the review, go straight back to it
+  if (S.reviewed && S.step < S.sections.length)
+    n.lastChild.before(h("button", { class: "to-review", onclick: () => forward(true) }, "Back to review"));
+  kids.push(n);
   return kids;
 }
 
 function writeStep() {
-  const kids = [h("h2", {}, "Check and write")];
-  kids.push(h("table", { class: "sum" }, S.summary.map(([k, v]) => h("tr", {}, h("th", {}, k), h("td", {}, v)))));
-  kids.push(h("label", { class: "l", style: "display:block;font-weight:600;margin-bottom:6px" }, "SD card"));
-  if (!S.volumes.length) kids.push(h("div", { class: "note" },
-    "No Raspberry Pi boot partition is mounted. Put the freshly flashed card in, wait for it to appear, then Look again."));
-  for (const v of S.volumes) kids.push(h("div", { class: "vol" + (v.ok ? "" : " no") + (S.boot === v.path ? " sel" : ""),
-      onclick: v.ok ? () => { S.boot = v.path; render(); } : null },
-    h("input", { type: "radio", name: "vol", checked: S.boot === v.path, disabled: !v.ok, "aria-label": v.path }),
+  const sum = S.summary || { groups: [], radio: {} }, r = sum.radio;
+  const kids = [h("h2", {}, "Check and write"),
+    h("p", { class: "lede" }, "Check your answers, then put the freshly flashed card in and write the setup to it.")];
+
+  // what the radio needs, on the same LCD as the Radio step
+  kids.push(h("div", { class: "lcd review" },
+    h("div", {}, h("small", {}, "YOUR RADIO TX"), r.tx), h("div", {}, h("small", {}, "YOUR RADIO RX"), r.rx),
+    h("div", {}, h("small", {}, "COLOUR CODE"), r.cc), h("div", {}, h("small", {}, "SLOTS"), r.slots)));
+
+  kids.push(h("div", { class: "review-groups" }, sum.groups.map(g => {
+    const step = 1 + S.sections.findIndex(s => s.id === g.section);
+    return h("section", { class: "rgroup", "aria-label": g.title },
+      h("header", {}, h("h3", { class: "sub" }, g.title),
+        h("button", { type: "button", class: "link", onclick: () => go(step), "aria-label": `Edit ${g.title}` }, "Edit")),
+      h("dl", {}, g.rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])));
+  })));
+
+  // the card: the list refreshes by itself while this step is open
+  const ok = S.volumes.filter(v => v.ok);
+  kids.push(h("h3", { class: "sub card-head" }, "SD card"));
+  if (!S.volumes.length) kids.push(h("div", { class: "waiting", role: "status" },
+    h("span", { class: "radar", "aria-hidden": "true" }),
+    h("div", {}, h("b", {}, "Waiting for the card…"),
+      h("div", { class: "muted" }, "Put the freshly flashed card in. It shows up here once your computer mounts its bootfs partition."))));
+  for (const v of S.volumes) kids.push(h("label", { class: "vol" + (v.ok ? "" : " no") + (S.boot === v.path ? " sel" : "") },
+    h("input", { type: "radio", name: "vol", checked: S.boot === v.path, disabled: !v.ok,
+      onchange: () => { S.boot = v.path; S.typePath = false; render(); } }),
     h("div", {}, h("code", {}, v.path), h("div", { class: "st" }, v.status))));
-  kids.push(h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
-    h("button", { onclick: loadVolumes }, "Look again"),
-    h("button", { onclick: () => { S.typePath = true; render(); $("#f-boot").focus(); } }, "Type a path…")));
-  if (S.typePath) kids.push(h("div", { class: "field", style: "margin-top:10px" },
-    h("input", { id: "f-boot", type: "text", class: "mono", placeholder: "/media/you/bootfs or E:\\", value: S.boot,
-      oninput: e => { S.boot = e.target.value.trim(); $("nav.btns button.go").disabled = !S.boot; } }),
-    h("div", { class: "help" }, "Checked when writing.")));
-  kids.push(h("p", { class: "muted" }, "Only the card's boot partition is changed. Passwords are kept there until the first boot, which moves them off it."));
-  if (S.writeError) kids.push(h("div", { class: "alarm" }, S.writeError));
+  if (S.volumes.length && !ok.length) kids.push(h("p", { class: "muted vol-hint" },
+    "None of these can be written. Flash the card again with Raspberry Pi OS Lite (64-bit), then put it back in."));
+  kids.push(S.typePath
+    ? h("div", { class: "field typed" },
+        h("label", { class: "l", for: "f-boot" }, "Boot partition path"),
+        h("input", { id: "f-boot", type: "text", class: "mono", placeholder: "/media/you/bootfs or E:\\", value: S.boot,
+          oninput: e => { S.boot = e.target.value.trim(); $("nav.btns button.go").disabled = !S.boot; } }),
+        h("div", { class: "help" }, "Checked when you write."))
+    : h("p", { class: "muted vol-hint" }, "Card mounted somewhere unusual? ",
+        h("button", { type: "button", class: "link", onclick: () => { S.typePath = true; render(); $("#f-boot").focus(); } }, "Type its path")));
+
+  if (S.writeError) kids.push(h("div", { class: "alarm", role: "alert" }, S.writeError));
+  kids.push(h("p", { class: "muted fine" }, "Only the card's boot partition changes. Your passwords stay on it until the first boot, which moves them off."));
   const n = nav("Back", S.writing ? "Writing…" : "Write to card", !S.boot || S.writing);
   if (S.writing) n.lastChild.classList.add("busy");
   kids.push(n);
@@ -346,9 +672,20 @@ function done() {
       h("li", {}, "To watch the setup, or if something goes wrong:")),
     h("code", { class: "cmd" }, `ssh ${a.username}@${a.hostname}.local\ntail -f /var/log/dmrhost-firstboot.log`),
     h("p", { class: "muted" }, "Files written: " + S.written.join(", ")),
-    h("nav", { class: "btns" }, h("button", { onclick: () => { S.step = S.sections.length + 1; S.boot = ""; loadVolumes(); } }, "Write another card"),
+    h("nav", { class: "btns" }, h("button", { onclick: () => { S.boot = ""; S.writeError = ""; go(S.sections.length + 1); loadVolumes(); } }, "Write another card"),
       h("button", { class: "go", onclick: async () => { await api("/api/quit", {}); $("#main").replaceChildren(h("p", {}, "The installer has stopped. You can close this tab.")); } }, "Quit")),
   ];
+}
+
+function warnIcon() {
+  // a warning triangle, drawn to match the check mark's stroke
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  for (const [k, v] of [["width", 18], ["height", 18], ["viewBox", "0 0 24 24"], ["aria-hidden", "true"], ["fill", "none"],
+    ["stroke", "currentColor"], ["stroke-width", "2"], ["stroke-linecap", "round"], ["stroke-linejoin", "round"]]) svg.setAttribute(k, v);
+  for (const d of ["M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z", "M12 9v4", "M12 17h.01"]) {
+    const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); svg.append(p);
+  }
+  return svg;
 }
 
 function checkMark() {
@@ -366,8 +703,9 @@ function nav(back, next, disabled) {
     h("button", { class: "go", disabled: !!disabled, onclick: forward }, next));
 }
 
-async function forward() {
+async function forward(toReview) {
   const last = S.sections.length + 1;
+  if (toReview && toReview.type) toReview = false;  // called as a click handler
   if (S.step >= 1 && S.step <= S.sections.length) {
     const fields = S.sections[S.step - 1].fields.map(f => f.key);
     const r = await api("/api/check", { answers: S.answers, fields });
@@ -379,7 +717,7 @@ async function forward() {
       if (bad) bad.focus();
       return;
     }
-    if (S.step === S.sections.length) {
+    if (S.step === S.sections.length || toReview) {
       const all = await api("/api/check", { answers: S.answers });
       if (Object.keys(all.errors).length) {
         S.errors = all.errors;
@@ -388,7 +726,9 @@ async function forward() {
         return go(1 + S.sections.findIndex(s => s.fields.some(f => f.key === k)));
       }
       S.summary = all.summary;
+      S.reviewed = true;
       loadVolumes();
+      return go(last);
     }
     return go(S.step + 1);
   }
@@ -404,13 +744,39 @@ async function forward() {
 }
 
 async function loadVolumes() {
-  S.volumes = await api("/api/volumes");
-  const ok = S.volumes.filter(v => v.ok);
-  if (!ok.some(v => v.path === S.boot)) S.boot = ok.length === 1 ? ok[0].path : "";
-  render();
+  const vols = await api("/api/volumes");
+  const changed = JSON.stringify(vols) !== JSON.stringify(S.volumes);
+  S.volumes = vols;
+  const ok = vols.filter(v => v.ok);
+  if (!S.typePath && !ok.some(v => v.path === S.boot)) S.boot = ok.length === 1 ? ok[0].path : "";
+  if (changed && S.step === S.sections.length + 1) render();
+}
+
+// look for the card every 2 s while the Write step is open
+let volTimer = null;
+function watchVolumes(on) {
+  if (on && !volTimer) volTimer = setInterval(() => { if (!S.writing) loadVolumes(); }, 2000);
+  if (!on && volTimer) { clearInterval(volTimer); volTimer = null; }
 }
 
 function go(i) { S.step = i; render(); window.scrollTo(0, 0); }
+
+// Answers are saved by the installer (not the browser: its port changes every run), so
+// closing the tab doesn't lose them. It never saves passwords. Start is never saved, so
+// opening the wizard doesn't overwrite where you got to.
+let saveTimer = null;
+function saveSoon() {
+  if (S.step < 1) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => api("/api/progress", { answers: S.answers, step: Math.min(S.step, S.sections.length) })
+    .catch(() => { /* saving is a convenience; the wizard works without it */ }), 500);
+}
+function startOver() {
+  api("/api/progress", { clear: true }).catch(() => {});
+  S.answers = { ...S.defaults }; S.saved = null; S.errors = {}; S.ids = null; S.reviewed = false; S.masterTouched = false;
+  if (S.masters) preselectMaster();
+  render();
+}
 
 function render() {
   renderSteps();
@@ -423,6 +789,8 @@ function render() {
   S.shown = S.step;
   $("#main").replaceChildren(h("div", { class: "view" + dir }, kids));
   S.picked = null; S.freshErrors = false;
+  saveSoon();
+  watchVolumes(S.step === n + 1);
   refreshLive();
   const el = focused && document.getElementById(focused);
   if (el) {
@@ -432,7 +800,9 @@ function render() {
 }
 
 api("/api/form").then(f => {
-  S.sections = f.sections; S.answers = f.defaults; S.dmrdash = f.dmrdash;
+  S.sections = f.sections; S.defaults = f.defaults; S.dmrdash = f.dmrdash;
+  S.answers = { ...f.defaults, ...(f.saved ? f.saved.answers : {}) };
+  if (f.saved && f.saved.step > 0) { S.saved = f.saved; S.masterTouched = !!f.saved.answers.master; }
   $("#ver").textContent = "v" + f.version;
   render();
 }).catch(e => $("#main").replaceChildren(h("div", { class: "alarm" }, e.message)));

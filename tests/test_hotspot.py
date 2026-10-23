@@ -1,9 +1,11 @@
+import io
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -67,6 +69,12 @@ class Validate(unittest.TestCase):
     def test_hidden_fields_not_checked(self):
         _, err = answers(dashboard=False, pin="x", port="nope")
         self.assertEqual(err, {})
+
+    def test_find_link(self):
+        f = hotspot.FIELDS["api_key"]
+        self.assertEqual(hotspot.find_link(f, {"callsign": "ct7ble"}), "https://brandmeister.network/#/profile/CT7BLE/api")
+        self.assertEqual(hotspot.find_link(f, {"callsign": "a/../b"}), "https://brandmeister.network/#/profile/AB/api")
+        self.assertEqual(hotspot.find_link(f, {}), "")
 
     def test_typed_master(self):
         a, err = answers(master="example.net:62032")
@@ -182,6 +190,78 @@ class Card(unittest.TestCase):
 
     def test_ok(self):
         self.assertTrue(hotspot.check_boot(self.boot)[0])
+
+
+class Progress(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.patch = mock.patch.object(hotspot, "progress_path", return_value=self.tmp / "d" / "progress.json")
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        shutil.rmtree(self.tmp)
+
+    def test_round_trip_without_secrets(self):
+        hotspot.save_progress({**GOOD, "password": "longenough", "junk": "x"}, 3)
+        saved = hotspot.load_progress()
+        self.assertEqual(saved["step"], 3)
+        self.assertEqual(saved["answers"]["callsign"], "ct7ble")
+        self.assertIs(saved["answers"]["dashboard"], True)
+        raw = hotspot.progress_path().read_text()
+        for secret in ("s3cret$pw", "pass: word#1", "longenough", "KEY", "1234\""):
+            self.assertNotIn(secret, raw)
+        self.assertNotIn("junk", saved["answers"])
+        if not sys.platform.startswith("win"):
+            self.assertEqual(hotspot.progress_path().stat().st_mode & 0o777, 0o600)
+
+    def test_step_is_clamped(self):
+        hotspot.save_progress({}, 99)
+        self.assertEqual(hotspot.load_progress()["step"], len(hotspot.SECTIONS))
+
+    def test_missing_or_broken(self):
+        self.assertIsNone(hotspot.load_progress())
+        hotspot.progress_path().parent.mkdir(parents=True)
+        hotspot.progress_path().write_text("{not json")
+        self.assertIsNone(hotspot.load_progress())
+        hotspot.clear_progress()
+        hotspot.clear_progress()  # twice is fine
+        self.assertFalse(hotspot.progress_path().exists())
+
+
+class RadioID(unittest.TestCase):
+    def setUp(self):
+        hotspot._ids_cache.clear()
+
+    def fake(self, rows):
+        body = json.dumps({"count": len(rows), "results": rows}).encode()
+        resp = mock.MagicMock()
+        resp.__enter__.return_value = io.BytesIO(body)
+        return mock.patch("urllib.request.urlopen", return_value=resp)
+
+    def test_newest_first(self):
+        rows = [
+            {"id": 2680810, "callsign": "CT7BLE", "fname": "Joel", "surname": "", "city": "Povoa", "country": "Portugal",
+             "lastheard": "Sun, 19 Jul 2026 14:06:33 GMT", "lastmaster": "2682"},
+            {"id": 2680513, "callsign": "CT7BLE", "fname": "Joel", "surname": "", "city": "Povoa", "country": "Portugal",
+             "lastheard": "Fri, 23 Oct 2026 08:53:09 GMT", "lastmaster": 2682},
+            {"id": 1234567, "callsign": "OTHER", "lastheard": ""},
+        ]
+        with self.fake(rows) as u:
+            ids = hotspot.lookup_ids("ct7ble")
+            self.assertIn("callsign=CT7BLE", u.call_args[0][0].full_url)
+        self.assertEqual([r["id"] for r in ids], [2680513, 2680810])
+        self.assertEqual(ids[0]["lastmaster"], "2682")
+        self.assertEqual(ids[0]["name"], "Joel")
+
+    def test_bad_callsign_never_asks(self):
+        with mock.patch("urllib.request.urlopen") as u:
+            self.assertEqual(hotspot.lookup_ids("a b&c=1"), [])
+            u.assert_not_called()
+
+    def test_offline(self):
+        with mock.patch("urllib.request.urlopen", side_effect=OSError("offline")):
+            self.assertEqual(hotspot.lookup_ids("CT7BLE"), [])
 
 
 class Shell(unittest.TestCase):

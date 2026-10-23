@@ -15,11 +15,14 @@ import re
 import secrets
 import string
 import sys
+import urllib.parse
 import urllib.request
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 VERSION = "0.1.0"
 MASTERS_URL = "https://api.brandmeister.network/v2/master/"
+RADIOID_URL = "https://radioid.net/api/dmr/user/?callsign="
 MASTER_PORT = 62031
 MARK_BEGIN = "# >>> dmrhost-installer"
 MARK_END = "# <<< dmrhost-installer"
@@ -45,11 +48,13 @@ SECTIONS = [
          "placeholder": "N0CALL"},
         {"key": "dmr_id", "label": "DMR ID", "kind": "text", "required": True, "placeholder": "1234567",
          "help": "Your 7-digit ID from radioid.net."},
-        {"key": "id_suffix", "label": "Hotspot ID suffix", "kind": "text", "default": "01",
-         "help": "Two digits added to your DMR ID to make the hotspot's ID (1234567 + 01 = 123456701)."},
+        {"key": "id_suffix", "label": "ESSID", "kind": "text", "default": "01",
+         "help": "Two digits that make the hotspot's ID: 1234567 + 01 = 123456701."},
         {"key": "master", "label": "BrandMeister master", "kind": "master", "required": True,
-         "help": "Usually the one for your country. Or type an address, optionally with :port."},
+         "help": "Usually the one for your country: search by country, code or ID. Or type an address, optionally with :port."},
         {"key": "bm_password", "label": "Hotspot security password", "kind": "password", "required": True,
+         "warn": "This is NOT your BrandMeister account password. It is a different password, set in SelfCare.",
+         "link": "https://brandmeister.network/#/selfcare",
          "help": "Set in BrandMeister SelfCare, under your profile's hotspot security."},
         {"key": "location", "label": "Location", "kind": "text", "placeholder": "Lisbon"},
         {"key": "url", "label": "URL", "kind": "text",
@@ -90,7 +95,9 @@ SECTIONS = [
         {"key": "dashboard", "label": "Install dmrdash", "kind": "bool", "default": True,
          "help": "Live calls and talkgroup management at http://<hostname>.local:8080."},
         {"key": "api_key", "label": "SelfCare API key", "kind": "password", "when": ["dashboard", True],
-         "help": "Optional. Needed to change talkgroups from the dashboard; add it later in /etc/dmrdash.conf."},
+         "help": "Optional. Needed to change talkgroups from the dashboard; add it later in /etc/dmrdash.conf.",
+         "find": "On brandmeister.network: your callsign (top right) → Profile settings → Security settings → API keys.",
+         "find_link": "https://brandmeister.network/#/profile/{callsign}/api", "find_link_text": "Open your API keys page"},
         {"key": "pin", "label": "Dashboard PIN", "kind": "password", "when": ["dashboard", True],
          "help": "Optional. Asked for before any change."},
         {"key": "port", "label": "Dashboard port", "kind": "text", "default": "8080", "when": ["dashboard", True]},
@@ -100,12 +107,64 @@ SECTIONS = [
 FIELDS = {f["key"]: f for s in SECTIONS for f in s["fields"]}
 
 
+def find_link(field: dict, answers: dict) -> str:
+    """A field's "where to find it" link, with the callsign filled in."""
+    call = re.sub(r"[^A-Za-z0-9]", "", str(answers.get("callsign", ""))).upper()
+    link = field.get("find_link", "")
+    return link.replace("{callsign}", call) if call or "{callsign}" not in link else ""
+
+
 def visible(field: dict, answers: dict) -> bool:
     if "when" not in field:
         return True
     key, want = field["when"]
     have = answers.get(key)
     return bool(have) if want is True else have == want
+
+
+# --- saved progress ---------------------------------------------------------------
+# The wizard's answers survive closing the browser. Secrets (every "password" field)
+# are never written: they would sit in a plain file long after the card is done.
+
+def progress_path() -> Path:
+    if sys.platform.startswith("win"):
+        base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / "dmrhost-installer" / "progress.json"
+
+
+def save_progress(answers: dict, step: int) -> None:
+    keep = {k: v for k, v in answers.items()
+            if k in FIELDS and FIELDS[k]["kind"] != "password"
+            and isinstance(v, (str, bool)) and len(str(v)) <= 4096}
+    path = progress_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump({"version": VERSION, "step": max(0, min(int(step), len(SECTIONS))), "answers": keep}, f, indent=2)
+    os.replace(tmp, path)
+
+
+def load_progress() -> dict | None:
+    try:
+        data = json.loads(progress_path().read_text(encoding="utf-8"))
+        answers = {k: v for k, v in data["answers"].items()
+                   if k in FIELDS and FIELDS[k]["kind"] != "password" and isinstance(v, (str, bool))}
+        mtime = progress_path().stat().st_mtime
+        return {"step": int(data.get("step", 0)), "answers": answers, "saved": mtime}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def clear_progress() -> None:
+    try:
+        progress_path().unlink()
+    except OSError:
+        pass
 
 
 def defaults() -> dict:
@@ -167,6 +226,41 @@ def resolve_master(value: str, masters: list) -> tuple[str, int] | None:
     if not re.fullmatch(r"[A-Za-z0-9.-]+", host or "-") or (port and not port.isdigit()):
         return None
     return host, int(port) if port else MASTER_PORT
+
+
+# --- radioid.net ----------------------------------------------------------------
+
+_ids_cache: dict = {}
+
+
+def lookup_ids(callsign: str, timeout: float = 8) -> list:
+    """The DMR IDs radioid.net has for a callsign, most recently heard first; [] when
+    there are none or it can't be reached."""
+    call = callsign.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{3,8}", call):
+        return []
+    if call not in _ids_cache:
+        try:
+            req = urllib.request.Request(RADIOID_URL + urllib.parse.quote(call),
+                                         headers={"User-Agent": f"dmrhost-installer/{VERSION}"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                rows = json.load(r).get("results") or []
+        except (OSError, ValueError, AttributeError):
+            return []
+
+        def heard(row):
+            try:
+                return parsedate_to_datetime(row["lastheard"]).timestamp()
+            except (KeyError, TypeError, ValueError):
+                return 0
+
+        _ids_cache[call] = [
+            {"id": int(row["id"]), "name": " ".join(x for x in (row.get("fname"), row.get("surname")) if x),
+             "city": row.get("city") or "", "country": row.get("country") or "",
+             "lastheard": row.get("lastheard") or "", "lastmaster": str(row.get("lastmaster") or "")}
+            for row in sorted(rows, key=heard, reverse=True)
+            if str(row.get("callsign", "")).upper() == call and str(row.get("id", "")).isdigit()]
+    return _ids_cache[call]
 
 
 # --- validation -----------------------------------------------------------------
@@ -470,27 +564,38 @@ def write_card(a: dict, boot) -> list[str]:
     return written
 
 
-def summary(a: dict) -> list[tuple[str, str]]:
-    """Plain-language review lines, shared by both front ends."""
+def summary(a: dict) -> dict:
+    """The review, grouped by wizard step (section id), plus what to set on the radio.
+    Shared by both front ends."""
     duplex = a["hat"] == "duplex"
     rx = _mhz(a["rx_freq"]) / 1e6
     tx = (_mhz(a["tx_freq"]) if duplex else _mhz(a["rx_freq"])) / 1e6
-    rows = [
-        ("Hotspot", f"{a['callsign']}, ID {hotspot_id(a)}"),
-        ("BrandMeister", f"{a['master_address']}:{a['master_port']}"),
-        ("Hotspot frequencies", f"RX {rx:.4f} / TX {tx:.4f} MHz" if duplex else f"{rx:.4f} MHz simplex"),
-        ("Set your radio to", f"TX {rx:.4f} / RX {tx:.4f} MHz, colour code {a['color_code']}"
-         if duplex else f"{rx:.4f} MHz, TS2, colour code {a['color_code']}"),
-        ("RX offset", f"{int(a['rx_offset'])} Hz"),
-        ("Display", {"ssd1306": '0.96" OLED', "sh1106": '1.3" OLED', "none": "none"}[a["oled"]]),
-        ("Login", f"{a['username']}@{a['hostname']}.local, "
-         + " and ".join(x for x in ("SSH key" if a["ssh_keys"] else "", "password" if a["password"] else "") if x)),
-        ("Network", f"Wi-Fi {a['wifi_ssid']} ({a['wifi_country']})" if a["wifi_ssid"] else "Ethernet"),
+    login = " and ".join(x for x in ("SSH key" if a["ssh_keys"] else "", "password" if a["password"] else "") if x)
+    groups = [
+        {"section": "station", "title": "Station", "rows": [
+            ["Hotspot", f"{a['callsign']}, ID {hotspot_id(a)}"],
+            ["BrandMeister", f"{a['master_address']}:{a['master_port']}"],
+        ]},
+        {"section": "radio", "title": "Radio", "rows": [
+            ["Hat", "MMDVM_HS duplex" if duplex else "MMDVM_HS simplex"],
+            ["Hotspot frequencies", f"RX {rx:.4f} / TX {tx:.4f} MHz" if duplex else f"{rx:.4f} MHz simplex"],
+            ["RX offset", f"{int(a['rx_offset'])} Hz"],
+            ["Display", {"ssd1306": '0.96" OLED', "sh1106": '1.3" OLED', "none": "none"}[a["oled"]]],
+        ]},
+        {"section": "pi", "title": "Pi", "rows": [
+            ["Login", f"{a['username']}@{a['hostname']}.local, {login}"],
+            ["Network", f"Wi-Fi {a['wifi_ssid']} ({a['wifi_country']})" if a["wifi_ssid"] else "Ethernet"],
+            ["Time zone", a["timezone"]],
+        ]},
     ]
     if a["dashboard"]:
         src = find_dmrdash_deb()
-        rows.append(("Dashboard", f"http://{a['hostname']}.local:{a['port']}"
-                     + (f" ({src.name} on the card)" if src else " (downloaded on first boot)")))
+        dash = [["Address", f"http://{a['hostname']}.local:{a['port']}"],
+                ["Package", f"{src.name}, on the card" if src else "downloaded on first boot"],
+                ["Talkgroup changes", "on (API key given)" if a["api_key"] else "off until you add an API key"]]
     else:
-        rows.append(("Dashboard", "not installed"))
-    return rows
+        dash = [["Dashboard", "not installed"]]
+    groups.append({"section": "dashboard", "title": "Dashboard", "rows": dash})
+    radio = {"tx": f"{rx:.4f}", "rx": f"{tx:.4f}", "cc": str(int(a["color_code"])),
+             "slots": "TS1 + TS2" if duplex else "TS2"}
+    return {"groups": groups, "radio": radio}

@@ -18,8 +18,10 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
 - An MMDVM_HS GPIO hat, duplex or simplex, optionally with a 0.96" (SSD1306) or 1.3" (SH1106) OLED.
 - An SD card, 8 GB or more.
 - Internet access on first boot, over Wi-Fi or Ethernet (a Pi Zero has no Ethernet).
-- A BrandMeister account with a hotspot security password set in SelfCare. For talkgroup changes from the
-  dashboard, also a SelfCare API key.
+- A BrandMeister account with a hotspot security password set in [SelfCare](https://brandmeister.network/#/selfcare).
+  This is not your BrandMeister login password. For talkgroup changes from the
+  dashboard, also a SelfCare API key: on brandmeister.network, your callsign (top right) → Profile settings →
+  Security settings → API keys, or `https://brandmeister.network/#/profile/<CALLSIGN>/api`.
 
 **On your computer**
 
@@ -28,9 +30,11 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
 
 ## Use
 
-1. In Raspberry Pi Imager, choose your Pi, then **Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)**
-   (trixie, 2025-10 or newer), and the card. When Imager offers OS customisation, choose **No**: the installer sets
-   the user, Wi-Fi and hostname itself.
+1. Flash **Raspberry Pi OS Lite (64-bit)**, trixie (2025-10) or newer, with
+   [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Either pick it in Imager under
+   **Raspberry Pi OS (other)**, or [download the latest image](https://downloads.raspberrypi.com/raspios_lite_arm64_latest)
+   and choose **Use custom**. If Imager offers to customise the OS, skip it: the installer sets the user, Wi-Fi and
+   hostname itself. The wizard's Start page has the same links.
 2. Take the card out and put it back in, so your computer mounts its `bootfs` partition.
 3. Run the wizard:
 
@@ -40,6 +44,8 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
    ```
 
    On Windows, use `py wizard.py` if `python3` isn't found. You can fill in the answers while Imager is still writing.
+   Type your callsign and the wizard looks up your DMR IDs on radioid.net. Picking one also picks the BrandMeister
+   master it last used.
 4. Pick the card and write. Eject it, put it in the Pi with the hat on, and power it up.
 5. The first boot takes 5 to 15 minutes. Then the hotspot logs in to BrandMeister, the OLED lights up, and the
    dashboard is at `http://<hostname>.local:8080`.
@@ -99,6 +105,10 @@ reboots until it succeeds.
 - The browser wizard listens on `127.0.0.1` only, on a random port. Every request needs a random token that is
   only in the address the wizard opens, so other websites in your browser can't use it.
 - The dashboard listens on your whole LAN. Set a PIN if others share your network.
+- The wizard saves your answers as you go, so closing the browser loses nothing. They go to
+  `~/.config/dmrhost-installer/progress.json` (macOS: `~/Library/Application Support/…`, Windows: `%APPDATA%\…`),
+  readable only by you. Passwords, the API key and the PIN are never saved there. **Start over** on the first page
+  deletes the file.
 
 ## Troubleshooting
 

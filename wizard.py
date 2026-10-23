@@ -16,6 +16,7 @@ import json
 import secrets
 import sys
 import threading
+import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -60,9 +61,13 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/form":
             self._send(200, {"sections": hotspot.SECTIONS, "defaults": hotspot.defaults(),
                              "version": hotspot.VERSION,
-                             "dmrdash": (hotspot.find_dmrdash_deb() or Path("")).name})
+                             "dmrdash": (hotspot.find_dmrdash_deb() or Path("")).name,
+                             "saved": hotspot.load_progress()})
         elif path == "/api/masters":
             self._send(200, hotspot.fetch_masters())
+        elif path == "/api/ids":
+            q = urllib.parse.parse_qs(self.path.partition("?")[2])
+            self._send(200, hotspot.lookup_ids(q.get("callsign", [""])[0]))
         elif path == "/api/volumes":
             self._send(200, hotspot.find_boot_volumes())
         else:
@@ -91,6 +96,15 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, OSError) as e:
                 return self._send(200, {"error": str(e)})
             self._send(200, {"written": written})
+        elif path == "/api/progress":
+            try:
+                if body.get("clear"):
+                    hotspot.clear_progress()
+                else:
+                    hotspot.save_progress(body.get("answers") or {}, int(body.get("step") or 0))
+            except (OSError, ValueError, TypeError) as e:
+                return self._send(200, {"error": str(e)})
+            self._send(200, {})
         elif path == "/api/quit":
             self._send(200, {})
             threading.Thread(target=self.server.shutdown, daemon=True).start()
@@ -115,10 +129,15 @@ def run_gui(port: int, open_browser: bool) -> None:
 
 # --- command line ---------------------------------------------------------------
 
-def ask_field(f: dict, current) -> object:
+def ask_field(f: dict, current, answers: dict | None = None) -> object:
     label = f["label"]
+    if f.get("warn"):
+        print(f"  ! {f['warn']}" + (f" {f['link']}" if f.get("link") else ""))
     if f.get("help"):
         print(f"  {f['help']}")
+    if f.get("find"):
+        link = hotspot.find_link(f, answers or {})
+        print(f"  {f['find']}" + (f"\n  {link}" if link else ""))
     if f["kind"] == "bool":
         d = "Y/n" if current else "y/N"
         r = input(f"{label}? [{d}] ").strip().lower()
@@ -135,7 +154,8 @@ def ask_field(f: dict, current) -> object:
     if f["kind"] == "master":
         masters = hotspot.fetch_masters()
         if masters:
-            print("  Masters: " + ", ".join(f"{m['id']} {m['country']}" for m in masters))
+            for cc in sorted({m["country"] for m in masters}):
+                print(f"  {cc}: " + ", ".join(str(m["id"]) for m in masters if m["country"] == cc))
         else:
             print("  (couldn't fetch the master list; type the address)")
     if f["kind"] == "textarea" and current:
@@ -145,6 +165,18 @@ def ask_field(f: dict, current) -> object:
     shown = f" [{current}]" if current not in ("", None) else ""
     r = input(f"{label}{shown}: ").strip()
     return r or current
+
+
+def suggest_ids(answers: dict) -> None:
+    hits = hotspot.lookup_ids(answers.get("callsign", ""))
+    if not hits:
+        return
+    print("  On radioid.net:")
+    for h in hits:
+        where = ", ".join(x for x in (h["city"], h["country"]) if x)
+        print(f"    {h['id']}  {h['name']}{', ' + where if where else ''}")
+    if not answers.get("dmr_id"):
+        answers["dmr_id"] = str(hits[0]["id"])
 
 
 def run_cli(answers_file: str | None, boot: str | None, yes: bool) -> int:
@@ -158,7 +190,9 @@ def run_cli(answers_file: str | None, boot: str | None, yes: bool) -> int:
                 print(f"\n== {s['title']}")
                 for f in s["fields"]:
                     if hotspot.visible(f, answers):
-                        answers[f["key"]] = ask_field(f, answers.get(f["key"], ""))
+                        answers[f["key"]] = ask_field(f, answers.get(f["key"], ""), answers)
+                        if f["key"] == "callsign":
+                            suggest_ids(answers)
         a, err = hotspot.validate(answers)
         if not err:
             break
@@ -170,8 +204,13 @@ def run_cli(answers_file: str | None, boot: str | None, yes: bool) -> int:
         input("Press Enter to go through the questions again. ")
 
     print()
-    for k, v in hotspot.summary(a):
-        print(f"  {k:20} {v}")
+    review = hotspot.summary(a)
+    for g in review["groups"]:
+        print(f"  {g['title']}")
+        for k, v in g["rows"]:
+            print(f"    {k:20} {v}")
+    r = review["radio"]
+    print(f"\n  Set your radio to TX {r['tx']} / RX {r['rx']} MHz, colour code {r['cc']}, {r['slots']}")
 
     if not boot:
         vols = hotspot.find_boot_volumes()
