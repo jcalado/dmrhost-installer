@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMRHost installer</title>
+<style>
+:root {
+  --panel: #1d2023; --panel-2: #24282c; --panel-3: #2c3136; --rule: #3a4046; --rule-2: #4a5158;
+  --legend: #b3bac2; --legend-dim: #8d959e; --white: #eef1f3;
+  --lcd: #e4e0cc; --lcd-ink: #17190f; --lcd-dim: #5c5946;
+  --rx: #35b46a; --rx-text: #8fe0b0; --busy: #f0a020; --fail-text: #ff8a8d; --alarm-bg: #3a1e20;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--panel); color: var(--white); font: 14px/1.45 var(--sans); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+header h1 { font-size: 17px; font-weight: 600; margin: 0; }
+header .ver { color: var(--legend-dim); font: 12px var(--mono); }
+
+ol.steps { list-style: none; display: flex; gap: 4px; padding: 0; margin: 0 0 20px; flex-wrap: wrap; }
+ol.steps li { flex: 1 1 0; min-width: 84px; padding: 8px 10px 6px; border-top: 3px solid var(--rule);
+  color: var(--legend-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+ol.steps li.done { border-color: var(--rule-2); color: var(--legend); cursor: pointer; }
+ol.steps li.on { border-color: var(--rx); color: var(--white); }
+
+.card { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; }
+.card h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+.card > p.lede { color: var(--legend); margin: 0 0 18px; }
+
+.field { margin: 0 0 16px; }
+.field label.l { display: block; font-weight: 600; margin-bottom: 5px; }
+.field .help { color: var(--legend-dim); font-size: 13px; margin-top: 4px; }
+.field .err { color: var(--fail-text); font-size: 13px; margin-top: 4px; }
+.field.bad input, .field.bad textarea, .field.bad select { border-color: var(--fail-text); }
+input[type=text], input[type=password], textarea, select {
+  width: 100%; background: var(--panel); color: var(--white); border: 1px solid var(--rule-2);
+  border-radius: 4px; padding: 8px 10px; font: 14px var(--sans); }
+input.mono, textarea { font-family: var(--mono); font-size: 13px; }
+textarea { min-height: 70px; resize: vertical; }
+input:focus, textarea:focus, select:focus, button:focus-visible, .opt:focus-within {
+  outline: 2px solid var(--rx); outline-offset: 1px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+@media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } }
+
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.opt { display: block; border: 1px solid var(--rule-2); border-radius: 4px; padding: 9px 11px; cursor: pointer;
+  background: var(--panel); }
+.opt input { position: absolute; opacity: 0; }
+.opt b { display: block; font-weight: 600; }
+.opt span { color: var(--legend-dim); font-size: 13px; }
+.opt.sel { border-color: var(--rx); background: var(--panel-3); }
+.switch { display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 600; }
+.switch input { width: 18px; height: 18px; accent-color: var(--rx); }
+
+.lcd { background: var(--lcd); color: var(--lcd-ink); border-radius: 4px; padding: 10px 14px; margin: 4px 0 18px;
+  font: 600 15px var(--mono); display: flex; gap: 18px; flex-wrap: wrap; }
+.lcd small { color: var(--lcd-dim); font-weight: 600; font-size: 11px; display: block; letter-spacing: .08em; }
+
+nav.btns { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
+button { font: 600 14px var(--sans); padding: 9px 18px; border-radius: 4px; border: 1px solid var(--rule-2);
+  background: var(--panel-3); color: var(--white); cursor: pointer; }
+button.go { background: var(--rx); border-color: var(--rx); color: #08140d; }
+button:disabled { opacity: .5; cursor: default; }
+
+ol.how { padding-left: 20px; margin: 0 0 8px; color: var(--legend); }
+ol.how li { margin-bottom: 8px; }
+ol.how b { color: var(--white); }
+table.sum { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+table.sum th, table.sum td { text-align: left; padding: 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.sum th { color: var(--legend); font-weight: 400; width: 38%; padding-right: 12px; }
+table.sum td { font-family: var(--mono); font-size: 13px; }
+.vol { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--rule-2); border-radius: 4px;
+  padding: 9px 11px; margin-bottom: 8px; cursor: pointer; background: var(--panel); }
+.vol.sel { border-color: var(--rx); background: var(--panel-3); }
+.vol.no { cursor: default; opacity: .7; }
+.vol code { font-family: var(--mono); }
+.vol .st { color: var(--legend-dim); font-size: 13px; }
+.vol.no .st { color: var(--busy); }
+.note { background: var(--panel); border-left: 3px solid var(--busy); padding: 10px 12px; color: var(--legend); margin: 12px 0; }
+.alarm { background: var(--alarm-bg); color: var(--fail-text); padding: 10px 12px; border-radius: 4px; margin: 12px 0; }
+.ok { color: var(--rx-text); }
+code.cmd { display: block; background: var(--panel); border: 1px solid var(--rule); padding: 8px 10px; border-radius: 4px;
+  font: 13px var(--mono); overflow-x: auto; white-space: pre; margin: 6px 0 12px; }
+.muted { color: var(--legend-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>DMRHost hotspot installer</h1><span class="ver" id="ver"></span></header>
+  <ol class="steps" id="steps"></ol>
+  <main class="card" id="main" aria-live="polite"><p class="muted">Loading…</p></main>
+</div>
+<script>
+"use strict";
+const TOKEN = location.hash.slice(1);
+const $ = (s, el = document) => el.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "class") el.className = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : String(k));
+  return el;
+}
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? { headers: { "X-Token": TOKEN } } :
+    { method: "POST", headers: { "X-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.status === 403) throw new Error("This page's link is out of date. Use the address the installer printed in the terminal.");
+  return r.json();
+}
+
+const S = { sections: [], answers: {}, errors: {}, step: 0, masters: null, volumes: [], boot: "", summary: [], dmrdash: "" };
+// steps: intro, one per section, write, done
+const stepNames = () => ["Start", ...S.sections.map(s => s.title), "Write"];
+
+function visible(f) {
+  if (!f.when) return true;
+  const [k, want] = f.when, have = S.answers[k];
+  return want === true ? !!have : have === want;
+}
+
+function renderSteps() {
+  const ol = $("#steps"); ol.replaceChildren();
+  stepNames().forEach((n, i) => {
+    const done = i < S.step && S.step <= S.sections.length + 1;
+    ol.append(h("li", { class: i === S.step ? "on" : done ? "done" : "", onclick: done ? () => go(i) : null }, n));
+  });
+}
+
+function fieldEl(f) {
+  const id = "f-" + f.key, v = S.answers[f.key] ?? "", err = S.errors[f.key];
+  const set = val => { S.answers[f.key] = val; delete S.errors[f.key]; };
+  let input;
+  if (f.kind === "choice") {
+    input = h("div", { class: "choices", role: "radiogroup", "aria-labelledby": id + "-l" },
+      f.choices.map(([val, name, desc]) => h("label", { class: "opt" + (v === val ? " sel" : "") },
+        h("input", { type: "radio", name: f.key, value: val, checked: v === val,
+          onchange: () => { set(val); render(); } }),
+        h("b", {}, name), desc ? h("span", {}, desc) : null)));
+  } else if (f.kind === "bool") {
+    return h("div", { class: "field" },
+      h("label", { class: "switch" }, h("input", { type: "checkbox", id, checked: !!v,
+        onchange: e => { set(e.target.checked); render(); } }), f.label),
+      f.help ? h("div", { class: "help" }, f.help) : null);
+  } else if (f.kind === "master") {
+    input = masterEl(f, set);
+  } else if (f.kind === "textarea") {
+    input = h("textarea", { id, spellcheck: "false", oninput: e => set(e.target.value) }, v);
+  } else {
+    input = h("input", { id, type: f.kind === "password" ? "password" : "text", value: v,
+      placeholder: f.placeholder || null, autocomplete: "off", spellcheck: "false",
+      class: ["freq", "password"].includes(f.kind) || f.key === "rx_offset" ? "mono" : null,
+      inputmode: f.kind === "freq" ? "decimal" : null,
+      oninput: e => {
+        const was = !!S.answers[f.key];
+        set(f.upper ? e.target.value.toUpperCase() : e.target.value);
+        // fields shown "when" this one is filled in appear or go as it empties
+        if (was !== !!S.answers[f.key] && S.sections.some(s => s.fields.some(g => g.when && g.when[0] === f.key))) render();
+        else if (f.kind === "freq") refreshLive(); } });
+  }
+  return h("div", { class: "field" + (err ? " bad" : ""), "data-key": f.key },
+    h("label", { class: "l", for: f.kind === "choice" ? null : id, id: id + "-l" }, f.label),
+    input,
+    err ? h("div", { class: "err" }, err) : null,
+    f.help ? h("div", { class: "help" }, f.help) : null);
+}
+
+function masterEl(f, set) {
+  const v = S.answers.master ?? "";
+  if (S.masters === null) {
+    api("/api/masters").then(m => { S.masters = m; preselectMaster(); render(); });
+    return h("select", { disabled: true }, h("option", {}, "Fetching the BrandMeister master list…"));
+  }
+  const known = S.masters.some(m => String(m.id) === v);
+  const other = !known && (v !== "" || S.masters.length === 0 || S.masterOther);
+  const sel = h("select", { id: "f-master", onchange: e => {
+      S.masterOther = e.target.value === "other";
+      set(S.masterOther ? "" : e.target.value); render(); } },
+    h("option", { value: "", disabled: true, selected: !known && !other }, "Choose a master"),
+    S.masters.map(m => h("option", { value: String(m.id), selected: String(m.id) === v },
+      `${m.id} · ${m.country} · ${m.address}`)),
+    h("option", { value: "other", selected: other }, S.masters.length ? "Another address…" : "Type the address (offline)"));
+  if (!other) return sel;
+  return h("div", {}, sel, h("input", { type: "text", class: "mono", value: v, placeholder: "host or host:port",
+    style: "margin-top:8px", oninput: e => set(e.target.value) }));
+}
+
+function preselectMaster() {
+  if (S.answers.master || !S.masters.length) return;
+  const cc = (navigator.language.split("-")[1] || "").toUpperCase();
+  const m = S.masters.find(m => m.country === cc);
+  if (m) S.answers.master = String(m.id);
+}
+
+function mhz(s) { const n = parseFloat(String(s || "").replace(",", ".")); return isFinite(n) ? n : null; }
+function refreshLive() {
+  const el = $("#live"); if (!el) return;
+  const rx = mhz(S.answers.rx_freq), duplex = S.answers.hat === "duplex";
+  const tx = duplex ? mhz(S.answers.tx_freq) : rx;
+  const f = n => n == null ? "—" : n.toFixed(4);
+  el.replaceChildren(
+    h("div", {}, h("small", {}, "YOUR RADIO TX"), f(rx)),
+    h("div", {}, h("small", {}, "YOUR RADIO RX"), f(tx)),
+    h("div", {}, h("small", {}, "SLOTS"), duplex ? "TS1 + TS2" : "TS2"));
+}
+
+function intro() {
+  return [
+    h("h2", {}, "Before you start"),
+    h("p", { class: "lede" }, "This writes a hotspot setup onto a freshly flashed SD card. The Pi installs DMRHost" +
+      (S.dmrdash !== null ? " and the dmrdash dashboard" : "") + " on its first boot."),
+    h("ol", { class: "how" },
+      h("li", {}, "In ", h("b", {}, "Raspberry Pi Imager"), ", choose your Pi, then ",
+        h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"), " and the SD card."),
+      h("li", {}, "When Imager offers OS customisation, choose ", h("b", {}, "No"),
+        ". This installer sets the user, Wi-Fi and hostname itself."),
+      h("li", {}, "When it's done, take the card out and put it back in, so your computer mounts its ",
+        h("b", {}, "bootfs"), " partition."),
+      h("li", {}, "Answer the questions here, then pick the card and write.")),
+    h("p", { class: "muted" }, "You can fill in the answers while Imager is still writing."),
+    S.dmrdash ? h("p", { class: "muted" }, `Dashboard package: ${S.dmrdash}`) :
+      h("div", { class: "note" }, "No dmrdash package is bundled (payload/dmrdash_*_all.deb). " +
+        "The Pi will try to download it from GitHub and skips the dashboard if it can't."),
+    nav(null, "Start"),
+  ];
+}
+
+function section(s) {
+  const kids = [h("h2", {}, s.title)];
+  const pair = new Set(["rx_freq", "tx_freq", "rx_offset", "color_code", "wifi_password", "wifi_country", "pin", "port"]);
+  let row = null;
+  for (const f of s.fields) {
+    if (!visible(f)) continue;
+    const el = fieldEl(f);
+    if (pair.has(f.key)) {
+      if (!row) { row = h("div", { class: "row2" }); kids.push(row); }
+      row.append(el);
+      if (row.children.length === 2) row = null;
+    } else { row = null; kids.push(el); }
+    if (f.key === "hat") kids.push(h("div", { class: "lcd", id: "live" }));
+  }
+  kids.push(nav("Back", "Next"));
+  return kids;
+}
+
+function writeStep() {
+  const kids = [h("h2", {}, "Check and write")];
+  kids.push(h("table", { class: "sum" }, S.summary.map(([k, v]) => h("tr", {}, h("th", {}, k), h("td", {}, v)))));
+  kids.push(h("label", { class: "l", style: "display:block;font-weight:600;margin-bottom:6px" }, "SD card"));
+  if (!S.volumes.length) kids.push(h("div", { class: "note" },
+    "No Raspberry Pi boot partition is mounted. Put the freshly flashed card in, wait for it to appear, then Look again."));
+  for (const v of S.volumes) kids.push(h("div", { class: "vol" + (v.ok ? "" : " no") + (S.boot === v.path ? " sel" : ""),
+      onclick: v.ok ? () => { S.boot = v.path; render(); } : null },
+    h("input", { type: "radio", name: "vol", checked: S.boot === v.path, disabled: !v.ok, "aria-label": v.path }),
+    h("div", {}, h("code", {}, v.path), h("div", { class: "st" }, v.status))));
+  kids.push(h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
+    h("button", { onclick: loadVolumes }, "Look again"),
+    h("button", { onclick: () => { S.typePath = true; render(); $("#f-boot").focus(); } }, "Type a path…")));
+  if (S.typePath) kids.push(h("div", { class: "field", style: "margin-top:10px" },
+    h("input", { id: "f-boot", type: "text", class: "mono", placeholder: "/media/you/bootfs or E:\\", value: S.boot,
+      oninput: e => { S.boot = e.target.value.trim(); $("nav.btns button.go").disabled = !S.boot; } }),
+    h("div", { class: "help" }, "Checked when writing.")));
+  kids.push(h("p", { class: "muted" }, "Only the card's boot partition is changed. Passwords are kept there until the first boot, which moves them off it."));
+  if (S.writeError) kids.push(h("div", { class: "alarm" }, S.writeError));
+  kids.push(nav("Back", "Write to card", !S.boot || S.writing));
+  return kids;
+}
+
+function done() {
+  const a = S.answers;
+  return [
+    h("h2", { class: "ok" }, "Card ready"),
+    h("p", { class: "lede" }, "Eject the card, put it in the Pi with the hat on, and power it up."),
+    h("ol", { class: "how" },
+      h("li", {}, "The first boot takes ", h("b", {}, "5 to 15 minutes"), ": it resizes the card, joins the network and installs DMRHost."),
+      h("li", {}, "When it's done the hotspot logs in to BrandMeister" + (a.oled !== "none" ? " and the OLED lights up." : ".")),
+      a.dashboard ? h("li", {}, "Dashboard: ", h("b", {}, `http://${a.hostname}.local:${a.port}`)) : null,
+      h("li", {}, "To watch the setup, or if something goes wrong:")),
+    h("code", { class: "cmd" }, `ssh ${a.username}@${a.hostname}.local\ntail -f /var/log/dmrhost-firstboot.log`),
+    h("p", { class: "muted" }, "Files written: " + S.written.join(", ")),
+    h("nav", { class: "btns" }, h("button", { onclick: () => { S.step = S.sections.length + 1; S.boot = ""; loadVolumes(); } }, "Write another card"),
+      h("button", { class: "go", onclick: async () => { await api("/api/quit", {}); $("#main").replaceChildren(h("p", {}, "The installer has stopped. You can close this tab.")); } }, "Quit")),
+  ];
+}
+
+function nav(back, next, disabled) {
+  return h("nav", { class: "btns" },
+    back ? h("button", { onclick: () => go(S.step - 1) }, back) : h("span"),
+    h("button", { class: "go", disabled: !!disabled, onclick: forward }, next));
+}
+
+async function forward() {
+  const last = S.sections.length + 1;
+  if (S.step >= 1 && S.step <= S.sections.length) {
+    const fields = S.sections[S.step - 1].fields.map(f => f.key);
+    const r = await api("/api/check", { answers: S.answers, fields });
+    S.errors = r.errors;
+    if (Object.keys(r.errors).length) {
+      render();
+      const bad = $(".field.bad input, .field.bad textarea, .field.bad select");
+      if (bad) bad.focus();
+      return;
+    }
+    if (S.step === S.sections.length) {
+      const all = await api("/api/check", { answers: S.answers });
+      if (Object.keys(all.errors).length) {
+        S.errors = all.errors;
+        const k = Object.keys(all.errors)[0];
+        return go(1 + S.sections.findIndex(s => s.fields.some(f => f.key === k)));
+      }
+      S.summary = all.summary;
+      loadVolumes();
+    }
+    return go(S.step + 1);
+  }
+  if (S.step === last) {
+    S.writing = true; S.writeError = ""; render();
+    const r = await api("/api/write", { answers: S.answers, boot: S.boot });
+    S.writing = false;
+    if (r.written) { S.written = r.written; return go(last + 1); }
+    S.writeError = r.error || "Some answers need fixing: " + Object.keys(r.errors || {}).join(", ");
+    return render();
+  }
+  go(S.step + 1);
+}
+
+async function loadVolumes() {
+  S.volumes = await api("/api/volumes");
+  const ok = S.volumes.filter(v => v.ok);
+  if (!ok.some(v => v.path === S.boot)) S.boot = ok.length === 1 ? ok[0].path : "";
+  render();
+}
+
+function go(i) { S.step = i; render(); window.scrollTo(0, 0); }
+
+function render() {
+  renderSteps();
+  const n = S.sections.length;
+  const kids = S.step === 0 ? intro() : S.step <= n ? section(S.sections[S.step - 1]) : S.step === n + 1 ? writeStep() : done();
+  const act = document.activeElement, focused = act && act.id;
+  const caret = act && "selectionStart" in act ? act.selectionStart : null;
+  $("#main").replaceChildren(...kids);
+  refreshLive();
+  const el = focused && document.getElementById(focused);
+  if (el) {
+    el.focus();
+    if (caret != null) try { el.setSelectionRange(caret, caret); } catch (_) { /* not a text field */ }
+  }
+}
+
+api("/api/form").then(f => {
+  S.sections = f.sections; S.answers = f.defaults; S.dmrdash = f.dmrdash;
+  $("#ver").textContent = "v" + f.version;
+  render();
+}).catch(e => $("#main").replaceChildren(h("div", { class: "alarm" }, e.message)));
+</script>
+</body>
+</html>

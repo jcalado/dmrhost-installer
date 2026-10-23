@@ -1,0 +1,163 @@
+[General]
+Callsign=${callsign}
+Id=${hotspot_id}
+Timeout=180
+Duplex=${duplex}
+# ModeHang=10
+RFModeHang=10
+NetModeHang=3
+
+[Info]
+RXFrequency=${rx_hz}
+TXFrequency=${tx_hz}
+Power=1
+Latitude=0.0
+Longitude=0.0
+Height=0
+Location=${location}
+Description=${description}
+URL=${url}
+
+[Log]
+# Logging levels, 0=No logging, 1=Debug, 2=Message, 3=Info, 4=Warning, 5=Error, 6=Fatal
+SyslogLevel=2
+DisplayLevel=0
+FileLevel=0
+FilePath=/var/log/DMRHost
+FileRoot=DMRHost
+FileRotate=1
+
+[CW Id]
+Enable=1
+Time=10
+# Callsign=
+
+[DMR Id Lookup]
+File=/usr/local/etc/user.csv
+Time=24
+
+[Modem]
+# Port=/dev/ttyACM0
+Port=/dev/ttyAMA0
+Protocol=uart
+# Address=0x22
+TXInvert=1
+RXInvert=0
+PTTInvert=0
+TXDelay=100
+RXOffset=${rx_offset}
+TXOffset=0
+DMRDelay=0
+RXLevel=50
+TXLevel=50
+RXDCOffset=0
+TXDCOffset=0
+RFLevel=100
+# CWIdTXLevel=50
+# DMRTXLevel=50
+# POCSAGTXLevel=50
+RSSIMappingFile=
+Trace=0
+Debug=0
+
+[Transparent Data]
+Enable=0
+RemoteAddress=127.0.0.1
+RemotePort=40094
+LocalAddress=127.0.0.1
+LocalPort=40095
+SendFrameType=1
+
+[DMR]
+Enable=1
+Beacons=0
+BeaconDuration=3
+ColorCode=${color_code}
+# selfonly 1=allows own id only, 0=public
+SelfOnly=1
+EmbeddedLCOnly=0
+DumpTAData=1
+# Prefixes=234,235
+# WhiteList=1234567,1234568
+# BlackList=1234567,1234568
+# Slot1TGWhiteList=
+# Slot2TGWhiteList=
+CallHang=3
+TXHang=4
+# ModeHang=10
+# OVCM Values, 0=off, 1=rx_on, 2=tx_on, 3=both_on, 4=force off
+# OVCM=0
+
+[POCSAG]
+Enable=0
+Frequency=439987500
+
+[DMR Network]
+Enable=1
+Address=${master_address}
+Port=${master_port}
+Password=${bm_password}
+# Options=
+Slot1=${slot1}
+Slot2=1
+# ModeHang=3
+Debug=0
+
+[POCSAG Network]
+Enable=0
+LocalAddress=127.0.0.1
+LocalPort=3800
+GatewayAddress=127.0.0.1
+GatewayPort=4800
+# ModeHang=3
+Debug=0
+
+[Display]
+Enable=${display_enable}
+# DMRHost connects to Displayserver at Address:Port
+Address=127.0.0.1
+Port=62001
+# DisplayServer listens on ListenAddress:ListenPort
+ListenAddress=127.0.0.1
+ListenPort=62001
+# DisplayType can be TFT Surenoo, Nextion, LCDproc, OLED
+# Nextion via Port=modem requires Transparent Data enabled and SendFrameType set to 1
+DisplayType=OLED
+# Logging levels, 0=No logging, 1=Debug, 2=Message, 3=Info, 4=Warning, 5=Error, 6=Fatal
+LogLevel=1
+# enable logging to syslog
+Syslog=1
+Debug=0
+Trace=0
+
+[TFT Serial]
+# Port=modem
+Port=/dev/ttyAMA0
+Brightness=50
+
+[Nextion]
+# Port=modem
+Port=/dev/ttyAMA0
+Brightness=50
+DisplayClock=1
+UTC=0
+#Screen Layout: 0=G4KLX 2=ON7LDS
+ScreenLayout=2
+IdleBrightness=20
+
+[OLED]
+# 3 = 0.96" SSD1306, 6 = 1.3" SH1106. Scroll=1 garbles the text.
+Type=${oled_type}
+Brightness=0
+Invert=0
+Scroll=0
+Rotate=0
+LogoScreensaver=1
+
+[LCDproc]
+Address=localhost
+Port=13666
+#LocalPort=13667
+DimOnIdle=0
+DisplayClock=1
+UTC=0

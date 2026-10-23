@@ -1,0 +1,6 @@
+__pycache__/
+payload/*.deb
+answers*.json
+build/
+dist/
+!answers.example.json

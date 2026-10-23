@@ -1,0 +1,15 @@
+[Unit]
+Description=DMRHost hotspot first-boot setup
+Wants=network-online.target time-sync.target
+After=network-online.target time-sync.target
+ConditionPathExists=!/var/lib/dmrhost-setup/done
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /var/lib/dmrhost-setup/firstboot.sh
+TimeoutStartSec=infinity
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
