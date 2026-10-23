@@ -489,6 +489,7 @@ const LINKS = {
   imager: "https://www.raspberrypi.com/software/",
   imagerWin: "https://downloads.raspberrypi.com/imager/imager_latest.exe",
   imagerMac: "https://downloads.raspberrypi.com/imager/imager_latest.dmg",
+  imagerLinux: "https://downloads.raspberrypi.com/imager/imager_latest_amd64.AppImage",
   os: "https://downloads.raspberrypi.com/raspios_lite_arm64_latest",
   osAll: "https://www.raspberrypi.com/software/operating-systems/",
 };
@@ -512,7 +513,7 @@ function intro() {
   const ua = navigator.userAgent;
   const mine = /Windows/.test(ua) ? "win" : /Mac OS X|Macintosh/.test(ua) ? "mac" : "linux";
   const imager = { win: [LINKS.imagerWin, "Imager for Windows"], mac: [LINKS.imagerMac, "Imager for macOS"],
-    linux: [LINKS.imager, "Imager for Linux"] };
+    linux: [LINKS.imagerLinux, "Imager for Linux (x86-64)"] };
   const order = [mine, ...["win", "mac", "linux"].filter(k => k !== mine)];
   return [
     resumeEl(),
