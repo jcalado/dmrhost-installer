@@ -239,13 +239,31 @@ h3.sub { font-size: 14px; font-weight: 600; margin: 0 0 var(--s3); }
 .get h3.sub { margin-bottom: var(--s1); }
 .get p { margin: 0 0 var(--s3); color: var(--legend); }
 .get p.muted { margin: var(--s3) 0 0; font-size: 13px; color: var(--legend-dim); }
-.links { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.links a { display: inline-flex; align-items: center; gap: var(--s2); padding: 7px var(--s3); border: 1px solid var(--rule-2); border-radius: 4px;
-  color: var(--white); text-decoration: none; font-weight: 600; font-size: 13px;
-  transition: border-color .15s var(--ease-out), filter .15s; }
-.links a:hover { border-color: var(--legend-dim); }
-.links a.main { background: var(--rx); border-color: var(--rx); color: #08140d; }
-.links a.main:hover { filter: brightness(1.08); }
+.get > div { display: flex; flex-direction: column; align-items: flex-start; }
+a.dl { display: inline-flex; align-items: center; gap: var(--s2); padding: 10px var(--s4); border-radius: 4px;
+  background: var(--rx); color: #08140d; font-weight: 600; text-decoration: none; transition: filter .15s; }
+a.dl:hover { filter: brightness(1.08); }
+a.dl svg { width: 18px; height: 18px; }
+.get p.dl-note { margin: var(--s2) 0 0; font-size: 13px; color: var(--legend-dim); }
+.get p.more { margin: auto 0 0; padding-top: var(--s3); font-size: 13px; }
+/* "Other systems": a native disclosure, opened as a small menu */
+details.menu { position: relative; margin-top: auto; padding-top: var(--s3); }
+details.menu summary { cursor: pointer; color: var(--rx-text); font-size: 13px; font-weight: 600; list-style: none;
+  display: inline-flex; align-items: center; gap: 6px; }
+details.menu summary::-webkit-details-marker { display: none; }
+details.menu summary::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg); transition: transform .15s var(--ease-out); }
+details.menu[open] summary::after { transform: translateY(1px) rotate(225deg); }
+.menu-list { position: absolute; z-index: 5; left: 0; top: calc(100% + var(--s1)); min-width: 260px; padding: var(--s1) 0;
+  background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  animation: fade .12s ease-out; }
+.menu-list a { display: flex; gap: var(--s3); align-items: flex-start; padding: var(--s2) var(--s3); color: var(--white);
+  text-decoration: none; font-weight: 600; }
+.menu-list a svg { flex: none; margin-top: 2px; }
+.menu-list a small { display: block; font-weight: 400; font-size: 12px; color: var(--legend-dim); }
+.menu-list a:hover, .menu-list a:focus-visible { background: var(--panel-3); outline: none; }
+.menu-list a.all { border-top: 1px solid var(--rule); margin-top: var(--s1); padding-top: var(--s2); font-weight: 400;
+  font-size: 13px; color: var(--rx-text); }
 a { color: var(--rx-text); text-underline-offset: 2px; }
 a:focus-visible { outline: 2px solid var(--rx); outline-offset: 2px; }
 .field.typed { margin-top: var(--s3); }
@@ -525,13 +543,17 @@ function osIcon(k) {
 }
 
 function intro() {
-  // offer this computer's Imager download first
+  // one button for this computer's system, the others in a menu
   const ua = navigator.userAgent;
   const mine = /Windows/.test(ua) ? "win" : /Mac OS X|Macintosh/.test(ua) ? "mac" : "linux";
-  const imager = { win: [LINKS.imagerWin, "Windows", "Raspberry Pi Imager for Windows"],
-    mac: [LINKS.imagerMac, "macOS", "Raspberry Pi Imager for macOS"],
-    linux: [LINKS.imagerLinux, "Linux", "Raspberry Pi Imager for Linux (x86-64 AppImage)"] };
-  const order = [mine, ...["win", "mac", "linux"].filter(k => k !== mine)];
+  const armLinux = mine === "linux" && /aarch64|arm/i.test(ua);  // no ARM AppImage: apt install rpi-imager
+  const imager = {
+    win: { href: LINKS.imagerWin, name: "Windows", note: "Installer for Windows 10 and 11" },
+    mac: { href: LINKS.imagerMac, name: "macOS", note: "Disk image for macOS" },
+    linux: armLinux ? { href: LINKS.imager, name: "Linux", note: "On ARM, install it with apt: rpi-imager" }
+      : { href: LINKS.imagerLinux, name: "Linux", note: "AppImage for x86-64 PCs" },
+  };
+  const others = ["win", "mac", "linux"].filter(k => k !== mine);
   return [
     resumeEl(),
     h("h2", {}, "Before you start"),
@@ -541,15 +563,21 @@ function intro() {
       h("div", {},
         h("h3", { class: "sub" }, "Raspberry Pi Imager"),
         h("p", {}, "Writes the OS to the SD card."),
-        h("div", { class: "links" }, order.map((k, i) =>
-          h("a", { href: imager[k][0], target: "_blank", rel: "noopener", class: i ? "" : "main",
-            title: imager[k][2], "aria-label": imager[k][2] }, osIcon(k), imager[k][1]))),
-        h("p", { class: "muted" }, "Other systems: ", ext(LINKS.imager, "raspberrypi.com/software"))),
+        h("a", { class: "dl", href: imager[mine].href, target: "_blank", rel: "noopener" },
+          osIcon(mine), `Download for ${imager[mine].name}`),
+        h("p", { class: "dl-note" }, imager[mine].note),
+        h("details", { class: "menu" },
+          h("summary", {}, "Other systems"),
+          h("div", { class: "menu-list" },
+            others.map(k => h("a", { href: imager[k].href, target: "_blank", rel: "noopener" },
+              osIcon(k), h("span", {}, imager[k].name, h("small", {}, imager[k].note)))),
+            h("a", { class: "all", href: LINKS.imager, target: "_blank", rel: "noopener" }, "All downloads on raspberrypi.com")))),
       h("div", {},
         h("h3", { class: "sub" }, "Raspberry Pi OS Lite (64-bit)"),
         h("p", {}, "The latest release, about 550 MB."),
-        h("div", { class: "links" }, h("a", { href: LINKS.os, class: "main" }, "Download the image")),
-        h("p", { class: "muted" }, "Or pick it inside Imager. ", ext(LINKS.osAll, "All Raspberry Pi OS images")))),
+        h("a", { class: "dl", href: LINKS.os }, "Download the image"),
+        h("p", { class: "dl-note" }, "Or pick it inside Imager instead."),
+        h("p", { class: "more" }, ext(LINKS.osAll, "All Raspberry Pi OS images")))),
     h("ol", { class: "how" },
       h("li", {}, "In Imager, choose your Pi, then the OS: ", h("b", {}, "Use custom"),
         " with the image you downloaded, or ", h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"),
@@ -817,6 +845,14 @@ function render() {
     if (caret != null) try { el.setSelectionRange(caret, caret); } catch (_) { /* not a text field */ }
   }
 }
+
+document.addEventListener("click", e => {
+  for (const d of document.querySelectorAll("details.menu[open]")) if (!d.contains(e.target)) d.open = false;
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  for (const d of document.querySelectorAll("details.menu[open]")) { d.open = false; d.querySelector("summary").focus(); }
+});
 
 api("/api/form").then(f => {
   S.sections = f.sections; S.defaults = f.defaults; S.dmrdash = f.dmrdash;
