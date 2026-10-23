@@ -53,6 +53,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/":
             self._send(200, UI.read_bytes(), "text/html; charset=utf-8")
+        elif not path.startswith("/api/"):
+            self._send(404, {"error": "not found"})
         elif not self._authorised():
             self._send(403, {"error": "bad token"})
         elif path == "/api/form":

@@ -12,6 +12,7 @@
   --rx: #35b46a; --rx-text: #8fe0b0; --busy: #f0a020; --fail-text: #ff8a8d; --alarm-bg: #3a1e20;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -21,20 +22,38 @@ header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
 header h1 { font-size: 17px; font-weight: 600; margin: 0; }
 header .ver { color: var(--legend-dim); font: 12px var(--mono); }
 
+/* Step bar: each segment fills like an LED meter. On "Card ready" they all light in turn. */
 ol.steps { list-style: none; display: flex; gap: 4px; padding: 0; margin: 0 0 20px; flex-wrap: wrap; }
-ol.steps li { flex: 1 1 0; min-width: 84px; padding: 8px 10px 6px; border-top: 3px solid var(--rule);
-  color: var(--legend-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-ol.steps li.done { border-color: var(--rule-2); color: var(--legend); cursor: pointer; }
-ol.steps li.on { border-color: var(--rx); color: var(--white); }
+ol.steps li { position: relative; flex: 1 1 0; min-width: 84px; padding: 8px 10px 6px; border-top: 3px solid var(--rule);
+  color: var(--legend-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  transition: color .2s var(--ease-out); }
+ol.steps li::before { content: ""; position: absolute; left: 0; right: 0; top: -3px; height: 3px; background: var(--rx);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .35s var(--ease-out), background-color .25s var(--ease-out); }
+ol.steps li.done { color: var(--legend); cursor: pointer; }
+ol.steps li.done::before { transform: scaleX(1); background: var(--rule-2); }
+ol.steps li.on { color: var(--white); }
+ol.steps li.on::before { transform: scaleX(1); }
+ol.steps.lit li { color: var(--white); }
+ol.steps.lit li::before { transform: scaleX(1); background: var(--rx); transition-delay: calc(var(--i) * 70ms); }
+
+/* Step content arrives from the direction of travel */
+.view.fwd { animation: in-fwd .26s var(--ease-out); }
+.view.back { animation: in-back .26s var(--ease-out); }
+@keyframes in-fwd { from { opacity: 0; transform: translateX(14px); } }
+@keyframes in-back { from { opacity: 0; transform: translateX(-14px); } }
 
 .card { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; }
 .card h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
-.card > p.lede { color: var(--legend); margin: 0 0 18px; }
+.card p.lede { color: var(--legend); margin: 0 0 18px; }
 
 .field { margin: 0 0 16px; }
 .field label.l { display: block; font-weight: 600; margin-bottom: 5px; }
 .field .help { color: var(--legend-dim); font-size: 13px; margin-top: 4px; }
 .field .err { color: var(--fail-text); font-size: 13px; margin-top: 4px; }
+.field .err.new { animation: err-in .2s var(--ease-out); }
+@keyframes err-in { from { opacity: 0; transform: translateY(-3px); } }
+input, textarea, select { transition: border-color .15s var(--ease-out); }
 .field.bad input, .field.bad textarea, .field.bad select { border-color: var(--fail-text); }
 input[type=text], input[type=password], textarea, select {
   width: 100%; background: var(--panel); color: var(--white); border: 1px solid var(--rule-2);
@@ -52,7 +71,11 @@ input:focus, textarea:focus, select:focus, button:focus-visible, .opt:focus-with
 .opt input { position: absolute; opacity: 0; }
 .opt b { display: block; font-weight: 600; }
 .opt span { color: var(--legend-dim); font-size: 13px; }
+.opt { transition: border-color .15s var(--ease-out), background-color .15s var(--ease-out); }
+.opt:hover:not(.sel) { border-color: var(--legend-dim); }
 .opt.sel { border-color: var(--rx); background: var(--panel-3); }
+.opt.picked { animation: picked .22s var(--ease-out); }
+@keyframes picked { from { border-color: var(--rule-2); background: var(--panel); } }
 .switch { display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 600; }
 .switch input { width: 18px; height: 18px; accent-color: var(--rx); }
 
@@ -65,6 +88,37 @@ button { font: 600 14px var(--sans); padding: 9px 18px; border-radius: 4px; bord
   background: var(--panel-3); color: var(--white); cursor: pointer; }
 button.go { background: var(--rx); border-color: var(--rx); color: #08140d; }
 button:disabled { opacity: .5; cursor: default; }
+button { transition: background-color .15s var(--ease-out), border-color .15s var(--ease-out), filter .15s, transform .1s; }
+button:hover:not(:disabled) { border-color: var(--legend-dim); }
+button.go:hover:not(:disabled) { border-color: var(--rx); filter: brightness(1.08); }
+button:active:not(:disabled) { transform: scale(.97); }
+/* writing: a bar runs along the button's foot until the card answers */
+button.busy, button.busy:disabled { position: relative; overflow: hidden; opacity: 1; }
+button.busy::after { content: ""; position: absolute; left: 0; bottom: 0; width: 40%; height: 3px;
+  background: rgba(8, 20, 13, .5); animation: sweep 1.1s var(--ease-out) infinite; }
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+
+.vol { transition: border-color .15s var(--ease-out), background-color .15s var(--ease-out); }
+.vol:not(.no):hover:not(.sel) { border-color: var(--legend-dim); }
+
+/* "Card ready": the check draws once the step bar has lit */
+.ready { display: flex; align-items: center; gap: 10px; }
+.ready svg { flex: none; }
+.ready path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: draw .4s var(--ease-out) .45s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* no travel: segments and views cross-fade, feedback stays */
+  ol.steps li::before { transform: none; opacity: 0; transition: opacity .2s, background-color .2s; }
+  ol.steps li.on::before, ol.steps li.done::before, ol.steps.lit li::before { transform: none; opacity: 1; }
+  .view.fwd, .view.back { animation: fade .15s ease-out; }
+  .field .err.new { animation: fade .15s ease-out; }
+  button:active:not(:disabled) { transform: none; }
+  button.busy::after { width: 100%; animation: pulse 1.2s ease-in-out infinite alternate; }
+  .ready path { animation: none; stroke-dashoffset: 0; }
+}
+@keyframes fade { from { opacity: 0; } }
+@keyframes pulse { from { opacity: .2; } to { opacity: .7; } }
 
 ol.how { padding-left: 20px; margin: 0 0 8px; color: var(--legend); }
 ol.how li { margin-bottom: 8px; }
@@ -127,11 +181,15 @@ function visible(f) {
 }
 
 function renderSteps() {
-  const ol = $("#steps"); ol.replaceChildren();
-  stepNames().forEach((n, i) => {
-    const done = i < S.step && S.step <= S.sections.length + 1;
-    ol.append(h("li", { class: i === S.step ? "on" : done ? "done" : "", onclick: done ? () => go(i) : null }, n));
+  // the same <li>s stay in place, so their fill can transition between steps
+  const ol = $("#steps"), names = stepNames(), finished = S.step > S.sections.length + 1;
+  if (ol.children.length !== names.length)
+    ol.replaceChildren(...names.map((n, i) => h("li", { style: `--i:${i}`, onclick: () => {
+      if (ol.children[i].classList.contains("done")) go(i); } }, n)));
+  [...ol.children].forEach((li, i) => {
+    li.className = i === S.step ? "on" : i < S.step && !finished ? "done" : "";
   });
+  ol.classList.toggle("lit", finished);
 }
 
 function fieldEl(f) {
@@ -140,9 +198,10 @@ function fieldEl(f) {
   let input;
   if (f.kind === "choice") {
     input = h("div", { class: "choices", role: "radiogroup", "aria-labelledby": id + "-l" },
-      f.choices.map(([val, name, desc]) => h("label", { class: "opt" + (v === val ? " sel" : "") },
+      f.choices.map(([val, name, desc]) => h("label", {
+          class: "opt" + (v === val ? " sel" : "") + (v === val && S.picked === f.key ? " picked" : "") },
         h("input", { type: "radio", name: f.key, value: val, checked: v === val,
-          onchange: () => { set(val); render(); } }),
+          onchange: () => { set(val); S.picked = f.key; render(); } }),
         h("b", {}, name), desc ? h("span", {}, desc) : null)));
   } else if (f.kind === "bool") {
     return h("div", { class: "field" },
@@ -168,7 +227,7 @@ function fieldEl(f) {
   return h("div", { class: "field" + (err ? " bad" : ""), "data-key": f.key },
     h("label", { class: "l", for: f.kind === "choice" ? null : id, id: id + "-l" }, f.label),
     input,
-    err ? h("div", { class: "err" }, err) : null,
+    err ? h("div", { class: S.freshErrors ? "err new" : "err" }, err) : null,
     f.help ? h("div", { class: "help" }, f.help) : null);
 }
 
@@ -269,14 +328,16 @@ function writeStep() {
     h("div", { class: "help" }, "Checked when writing.")));
   kids.push(h("p", { class: "muted" }, "Only the card's boot partition is changed. Passwords are kept there until the first boot, which moves them off it."));
   if (S.writeError) kids.push(h("div", { class: "alarm" }, S.writeError));
-  kids.push(nav("Back", "Write to card", !S.boot || S.writing));
+  const n = nav("Back", S.writing ? "Writing…" : "Write to card", !S.boot || S.writing);
+  if (S.writing) n.lastChild.classList.add("busy");
+  kids.push(n);
   return kids;
 }
 
 function done() {
   const a = S.answers;
   return [
-    h("h2", { class: "ok" }, "Card ready"),
+    h("h2", { class: "ok ready" }, checkMark(), "Card ready"),
     h("p", { class: "lede" }, "Eject the card, put it in the Pi with the hat on, and power it up."),
     h("ol", { class: "how" },
       h("li", {}, "The first boot takes ", h("b", {}, "5 to 15 minutes"), ": it resizes the card, joins the network and installs DMRHost."),
@@ -288,6 +349,15 @@ function done() {
     h("nav", { class: "btns" }, h("button", { onclick: () => { S.step = S.sections.length + 1; S.boot = ""; loadVolumes(); } }, "Write another card"),
       h("button", { class: "go", onclick: async () => { await api("/api/quit", {}); $("#main").replaceChildren(h("p", {}, "The installer has stopped. You can close this tab.")); } }, "Quit")),
   ];
+}
+
+function checkMark() {
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path");
+  for (const [k, v] of [["width", 22], ["height", 22], ["viewBox", "0 0 22 22"], ["aria-hidden", "true"]]) svg.setAttribute(k, v);
+  for (const [k, v] of [["d", "M4 11.5l4.5 4.5L18 6.5"], ["fill", "none"], ["stroke", "currentColor"],
+    ["stroke-width", "2.5"], ["stroke-linecap", "round"], ["stroke-linejoin", "round"]]) p.setAttribute(k, v);
+  svg.append(p);
+  return svg;
 }
 
 function nav(back, next, disabled) {
@@ -303,6 +373,7 @@ async function forward() {
     const r = await api("/api/check", { answers: S.answers, fields });
     S.errors = r.errors;
     if (Object.keys(r.errors).length) {
+      S.freshErrors = true;
       render();
       const bad = $(".field.bad input, .field.bad textarea, .field.bad select");
       if (bad) bad.focus();
@@ -312,6 +383,7 @@ async function forward() {
       const all = await api("/api/check", { answers: S.answers });
       if (Object.keys(all.errors).length) {
         S.errors = all.errors;
+        S.freshErrors = true;
         const k = Object.keys(all.errors)[0];
         return go(1 + S.sections.findIndex(s => s.fields.some(f => f.key === k)));
       }
@@ -346,7 +418,11 @@ function render() {
   const kids = S.step === 0 ? intro() : S.step <= n ? section(S.sections[S.step - 1]) : S.step === n + 1 ? writeStep() : done();
   const act = document.activeElement, focused = act && act.id;
   const caret = act && "selectionStart" in act ? act.selectionStart : null;
-  $("#main").replaceChildren(...kids);
+  // slide only when the step changes, not on re-renders within a step
+  const dir = S.shown === undefined || S.shown === S.step ? "" : S.step > S.shown ? " fwd" : " back";
+  S.shown = S.step;
+  $("#main").replaceChildren(h("div", { class: "view" + dir }, kids));
+  S.picked = null; S.freshErrors = false;
   refreshLive();
   const el = focused && document.getElementById(focused);
   if (el) {
