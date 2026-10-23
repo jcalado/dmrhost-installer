@@ -70,8 +70,13 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 PKGS=dmrhost
 [ "$OLED" = 1 ] && PKGS="$PKGS displayserver"
+# Don't let the packages start their services: the stock MMDVM.ini (Duplex=1, TX == RX)
+# makes DMRHost crash-loop until ours goes in below. We start them at the end.
+printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
+chmod 0755 /usr/sbin/policy-rc.d
 # shellcheck disable=SC2086
 apt-get install -y -o Dpkg::Options::=--force-confold $PKGS
+rm -f /usr/sbin/policy-rc.d
 say "installed $PKGS"
 
 # --- our hotspot config (keep the packaged one for reference)
