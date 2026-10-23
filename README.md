@@ -166,3 +166,6 @@ shellcheck payload/firstboot.sh fetch-dmrdash.sh
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+The wizard's Linux, Windows and Apple logos are [Font Awesome Free](https://fontawesome.com/license/free) brand icons
+(CC BY 4.0, Copyright 2024 Fonticons, Inc.).
