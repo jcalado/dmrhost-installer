@@ -13,6 +13,7 @@ import json
 import os
 import re
 import secrets
+import ssl
 import string
 import sys
 import urllib.parse
@@ -28,6 +29,18 @@ MARK_BEGIN = "# >>> dmrhost-installer"
 MARK_END = "# <<< dmrhost-installer"
 USER_GROUPS = "users,adm,dialout,audio,netdev,video,plugdev,input,gpio,spi,i2c,sudo"
 OLED_TYPES = {"ssd1306": 3, "sh1106": 6}
+
+
+def _tls() -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    # A bundled binary's OpenSSL looks for CA certificates where its build machine keeps
+    # them, which other Linux distros and macOS don't have: add certifi's, bundled at build
+    try:
+        import certifi
+        ctx.load_verify_locations(certifi.where())
+    except ImportError:
+        pass
+    return ctx
 
 
 def resource_dir() -> Path:
@@ -204,7 +217,7 @@ def fetch_masters(timeout: float = 8) -> list:
     if _masters_cache is None:
         try:
             req = urllib.request.Request(MASTERS_URL, headers={"User-Agent": f"dmrhost-installer/{VERSION}"})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=timeout, context=_tls()) as r:
                 rows = json.load(r)
             _masters_cache = sorted(
                 ({"id": int(m["id"]), "country": str(m.get("country", "")), "address": str(m["address"])}
@@ -243,7 +256,7 @@ def lookup_ids(callsign: str, timeout: float = 8) -> list:
         try:
             req = urllib.request.Request(RADIOID_URL + urllib.parse.quote(call),
                                          headers={"User-Agent": f"dmrhost-installer/{VERSION}"})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=timeout, context=_tls()) as r:
                 rows = json.load(r).get("results") or []
         except (OSError, ValueError, AttributeError):
             return []

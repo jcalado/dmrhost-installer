@@ -253,7 +253,12 @@ def main() -> int:
     p.add_argument("--port", type=int, default=0, help="port for the browser wizard (default: any free one)")
     p.add_argument("--no-browser", action="store_true", help="print the wizard's address, don't open it")
     p.add_argument("--version", action="version", version=hotspot.VERSION)
+    p.add_argument("--check-tls", action="store_true", help="check that the BrandMeister master list downloads")
     args = p.parse_args()
+    if args.check_tls:
+        n = len(hotspot.fetch_masters())
+        print(f"{n} BrandMeister masters")
+        return 0 if n else 1
     if args.cli or args.answers:
         try:
             return run_cli(args.answers, args.boot, args.yes)

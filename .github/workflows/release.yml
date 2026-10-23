@@ -46,7 +46,8 @@ jobs:
         run: |
           v=$(python -c 'import hotspot; print(hotspot.VERSION)')
           [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME, but hotspot.VERSION is $v"; exit 1; }
-      - run: pip install pyinstaller
+      # certifi gives the binary CA certificates that work on any system
+      - run: pip install pyinstaller certifi
       - name: Build
         run: |
           # --add-data takes src:dest on every OS since PyInstaller 6
@@ -59,6 +60,8 @@ jobs:
         run: |
           bin="out/${{ matrix.name }}"
           "$bin" --version
+          # HTTPS must work with the bundled certificates alone
+          SSL_CERT_FILE=/nonexistent SSL_CERT_DIR=/nonexistent "$bin" --check-tls
           cp -r tests/fixtures/bootfs "$RUNNER_TEMP/bootfs"
           "$bin" --answers tests/smoke-answers.json --boot "$RUNNER_TEMP/bootfs" --yes
           ls "$RUNNER_TEMP"/bootfs/dmrhost-setup/dmrdash_*_all.deb
