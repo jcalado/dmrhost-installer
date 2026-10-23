@@ -74,6 +74,7 @@ PKGS=dmrhost
 # makes DMRHost crash-loop until ours goes in below. We start them at the end.
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
 chmod 0755 /usr/sbin/policy-rc.d
+trap 'rm -f /usr/sbin/policy-rc.d' EXIT
 # shellcheck disable=SC2086
 apt-get install -y -o Dpkg::Options::=--force-confold $PKGS
 rm -f /usr/sbin/policy-rc.d
