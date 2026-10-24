@@ -99,7 +99,7 @@ SECTIONS = [
          "help": "Optional with a key. Also allows SSH logins with the password."},
         {"key": "timezone", "label": "Time zone", "kind": "text", "required": True, "placeholder": "Europe/Lisbon"},
         {"key": "wifi_ssid", "label": "Wi-Fi network", "kind": "text",
-         "help": "Leave blank to use Ethernet only (a Pi Zero has none)."},
+         "help": "A 2.4 GHz network: a Pi Zero 2 W can't see 5 GHz. Leave blank to use Ethernet only (a Pi Zero has none)."},
         {"key": "wifi_password", "label": "Wi-Fi password", "kind": "password", "when": ["wifi_ssid", True]},
         {"key": "wifi_country", "label": "Wi-Fi country", "kind": "text", "upper": True, "placeholder": "PT",
          "help": "Two-letter code; sets the legal Wi-Fi channels.", "when": ["wifi_ssid", True]},

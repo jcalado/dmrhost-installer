@@ -280,25 +280,9 @@ ol.how code.cmd { font-size: 12px; margin: var(--s2) 0 var(--s2); white-space: p
 .feats li { padding-left: var(--s4); border-left: 2px solid var(--rx); }
 .feats b { display: block; font-weight: 600; margin-bottom: 2px; }
 .feats li > span { color: var(--legend); font-size: 13px; line-height: 1.5; }
-.feats .tag, .need .tag { margin-left: var(--s2); padding: 1px 6px; border: 1px solid var(--rule-2); border-radius: 3px;
+.feats .tag { margin-left: var(--s2); padding: 1px 6px; border: 1px solid var(--rule-2); border-radius: 3px;
   color: var(--legend-dim); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }
 p.small { font-size: 13px; margin: 0; }
-
-/* Start: what you'll need */
-.need { margin: 0 0 var(--s6); }
-.need ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3) var(--s5); }
-@media (max-width: 640px) { .need ul { grid-template-columns: 1fr; } }
-.need li { display: flex; gap: var(--s3); align-items: flex-start; }
-.need input { appearance: none; flex: none; width: 18px; height: 18px; margin: 1px 0 0; border: 2px solid var(--rx);
-  border-radius: 4px; background: transparent center / 12px no-repeat; cursor: pointer;
-  transition: background-color .15s var(--ease-out), border-color .15s var(--ease-out); }
-.need input:checked { background-color: var(--rx); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.5l4.5-5' fill='none' stroke='%2308140d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
-.need input:focus-visible { outline: 2px solid var(--rx); outline-offset: 2px; }
-.need li.opt-item input { border-color: var(--rule-2); border-style: dashed; }
-.need li.opt-item input:checked { border-style: solid; border-color: var(--rx); }
-.need label { display: block; font-weight: 600; margin-bottom: 2px; cursor: pointer; }
-.need li:has(input:checked) label { color: var(--legend); }
-.need li > div > span { color: var(--legend); font-size: 13px; line-height: 1.5; }
 
 /* "Other systems": a native disclosure, opened as a small menu */
 details.menu { position: relative; margin-top: auto; padding-top: var(--s3); }
@@ -653,29 +637,6 @@ function osIcon(k) {
   return svg;
 }
 
-// What to have at hand: one item per thing the wizard asks for
-const NEEDS = [
-  ["The hardware", "A Raspberry Pi Zero 2 W, 3 or 4, an MMDVM_HS hat, and an SD card of 8 GB or more."],
-  ["Callsign and DMR ID", ["Your 7-digit ID from ", ["radioid.net", "https://radioid.net/"], ". The wizard can look it up."]],
-  ["Hotspot security password", ["Set in BrandMeister ", ["SelfCare", "https://brandmeister.network/#/selfcare"],
-    ". Not your BrandMeister login."]],
-  ["Two free frequencies", "One for a simplex hat. Pick ones your licence and band plan allow for hotspots."],
-  ["Wi-Fi name and password", "A 2.4 GHz network: a Pi Zero 2 W can't see 5 GHz. Or an Ethernet cable on a Pi 3 or 4."],
-  ["A way to log in", "An SSH public key, or a password you choose here."],
-  ["SelfCare API key", "To change talkgroups from the dashboard. You can add it later.", true],
-];
-function needEl() {
-  const text = t => (Array.isArray(t) ? t : [t]).map(x => Array.isArray(x) ? ext(x[1], x[0]) : x);
-  return h("section", { class: "need", "aria-labelledby": "need-h" },
-    h("h3", { class: "sub", id: "need-h" }, "What you'll need"),
-    h("ul", {}, NEEDS.map(([title, body, optional], i) => h("li", { class: optional ? "opt-item" : null },
-      // real checkboxes, to tick off while gathering things (kept for this session only)
-      h("input", { type: "checkbox", id: `need-${i}`, checked: !!(S.need && S.need[i]),
-        onchange: e => { (S.need = S.need || {})[i] = e.target.checked; } }),
-      h("div", {}, h("label", { for: `need-${i}` }, title, optional ? h("span", { class: "tag" }, "Optional") : null),
-        h("span", {}, text(body)))))));
-}
-
 function intro() {
   // one button for this computer's system, the others in a menu
   const ua = navigator.userAgent;
@@ -742,7 +703,6 @@ function intro() {
     h("p", { class: "lede" }, "This writes a hotspot setup onto a freshly flashed SD card. The Pi installs DMRHost" +
       " and the dmrdash dashboard on its first boot."),
     importEl(),
-    needEl(),
     h("h3", { class: "sub" }, "How will you flash the card?"),
     h("div", { class: "choices flash", role: "radiogroup", "aria-label": "How will you flash the card?" },
       pick("imager", "Raspberry Pi Imager", "Recommended. Imager downloads the OS for you."),
