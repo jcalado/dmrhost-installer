@@ -71,17 +71,22 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
    can't open its window unless you first run `xhost +si:localuser:root` (from the `xorg-xhost` package on Arch).
 
 2. Take the card out and put it back in, so your computer mounts its `bootfs` partition.
-3. Run the wizard:
+3. Download the installer for your computer from the
+   [latest release](https://github.com/jcalado/dmrhost-installer/releases/latest):
 
-   ```sh
-   python3 wizard.py            # opens in your browser
-   python3 wizard.py --cli      # same questions in the terminal
-   ```
+   - **Windows**: `dmrhost-installer-windows-x64.exe`. It isn't signed, so when Windows warns you, choose
+     **More info → Run anyway**.
+   - **macOS** (Apple silicon): `dmrhost-installer-macos-arm64`. Clear the quarantine flag and make it executable:
 
-   On Windows, use `py wizard.py` if `python3` isn't found. With a downloaded installer, run it instead of
-   `python3 wizard.py`, with the same options. The downloads aren't signed: on Windows, choose **More info → Run
-   anyway**; on macOS, run `xattr -d com.apple.quarantine dmrhost-installer-macos-arm64` first, and on macOS and
-   Linux, `chmod +x` it. You can fill in the answers while Imager is still writing.
+     ```sh
+     xattr -d com.apple.quarantine dmrhost-installer-macos-arm64
+     chmod +x dmrhost-installer-macos-arm64
+     ```
+
+   - **Linux**: `dmrhost-installer-linux-x64`. Make it executable with `chmod +x dmrhost-installer-linux-x64`.
+
+   Run it, by double-clicking or from a terminal. The wizard opens in your browser. Add `--cli` to answer the
+   same questions in the terminal instead. You can fill in the answers while Imager is still writing.
    Type your callsign and the wizard looks up your DMR IDs on radioid.net. Picking one also picks the BrandMeister
    master it last used.
 4. Pick the card and write. Eject it, put it in the Pi with the hat on, and power it up.
