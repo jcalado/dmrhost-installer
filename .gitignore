@@ -1,0 +1,7 @@
+# Impeccable design files
+.impeccable/
+DESIGN.md
+DESIGN.json
+PRODUCT.md
+
+.DS_Store
