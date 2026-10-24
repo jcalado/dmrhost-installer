@@ -232,6 +232,21 @@ h3.sub { font-size: 14px; font-weight: 600; margin: 0 0 var(--s3); }
 .resume p { margin: 0; color: var(--legend); font-size: 13px; max-width: 62ch; }
 .resume-btns { display: flex; gap: var(--s2); flex-wrap: wrap; }
 
+/* Start: fill the answers in from a WPSD or Pi-Star backup */
+.import { padding: var(--s4); margin: 0 0 var(--s6); border: 1px dashed var(--rule-2); border-radius: 4px; background: var(--panel); }
+.import.over { border-color: var(--rx); background: var(--panel-3); }
+.import.done { border-style: solid; border-color: var(--rx); }
+.import-head { display: flex; flex-wrap: wrap; gap: var(--s4); align-items: center; justify-content: space-between; }
+.import-head > div { flex: 1 1 320px; }
+.import-head p { margin: 0; color: var(--legend); font-size: 13px; max-width: 62ch; }
+.import h3.sub { margin-bottom: var(--s1); }
+.import .alarm { margin-top: var(--s3); }
+.import dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--s1) var(--s4); margin: var(--s4) 0 0; font-size: 13px; }
+.import dt { color: var(--legend-dim); }
+.import dd { margin: 0; }
+.import ul { margin: var(--s3) 0 0; padding-left: 20px; color: var(--legend); font-size: 13px; max-width: 66ch; }
+.import nav.btns { margin-top: var(--s4); }
+
 /* Start: the two downloads side by side */
 .get { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); margin: 0 0 var(--s6); }
 @media (max-width: 560px) { .get { grid-template-columns: 1fr; } }
@@ -568,6 +583,60 @@ function resumeEl() {
       h("button", { onclick: startOver }, "Start over")));
 }
 
+// A WPSD or Pi-Star configuration backup fills in what it can. The installer reads the zip;
+// the passwords in it stay in this page, like typed ones.
+async function importBackup(file) {
+  S.importing = true; render();
+  let r;
+  try {
+    const res = await fetch("/api/import", { method: "POST", body: file,
+      headers: { "X-Token": TOKEN, "Content-Type": "application/zip" } });
+    if (res.status === 403) throw new Error("This page's link is out of date. Use the address the installer printed in the terminal.");
+    r = await res.json();
+  } catch (e) { r = { error: e.message }; }
+  S.importing = false;
+  if (r.error) S.imported = { file: file.name, error: r.error };
+  else {
+    Object.assign(S.answers, r.answers);
+    S.errors = {}; S.ids = null; S.reviewed = false;
+    if (r.answers.master) S.masterTouched = true;
+    S.imported = { file: file.name, keys: Object.keys(r.answers), notes: r.notes };
+  }
+  render();
+}
+function importEl() {
+  const r = S.imported, ok = r && !r.error;
+  const input = h("input", { type: "file", id: "f-backup", accept: ".zip,application/zip", hidden: true,
+    onchange: e => { if (e.target.files[0]) importBackup(e.target.files[0]); } });
+  const pick = h("button", { type: "button", class: S.importing ? "busy" : null, disabled: !!S.importing,
+    onclick: () => input.click() }, S.importing ? "Reading…" : ok ? "Load another" : "Load backup");
+  const box = h("section", { class: "import" + (ok ? " done" : ""), "aria-labelledby": "import-h" },
+    h("div", { class: "import-head" },
+      h("div", {}, h("h3", { class: "sub", id: "import-h" }, "Moving from WPSD or Pi-Star?"),
+        h("p", {}, "Load its configuration backup and the answers it has are filled in for you. " +
+          "Make one in its dashboard: Configuration → Backup/Restore → Download Configuration. Or drop the .zip here.")),
+      input, pick));
+  if (r && r.error) box.append(h("div", { class: "alarm", role: "alert" }, r.file + ": " + r.error));
+  if (ok) {
+    // what was filled in, by step; secrets by name only
+    const rows = S.sections.map(s => [s.title, s.fields.filter(f => r.keys.includes(f.key)).map(f => f.label)])
+      .filter(([, labels]) => labels.length);
+    box.append(h("div", { role: "status" },
+      h("dl", {}, h("dt", {}, "From"), h("dd", {}, h("code", {}, r.file)),
+        rows.flatMap(([t, labels]) => [h("dt", {}, t), h("dd", {}, labels.join(", "))])),
+      r.notes.length ? h("ul", {}, r.notes.map(n => h("li", {}, n))) : null,
+      h("nav", { class: "btns" }, h("span"), h("button", { class: "go", onclick: () => go(1) }, "Check the answers"))));
+  }
+  box.addEventListener("dragover", e => { e.preventDefault(); box.classList.add("over"); });
+  box.addEventListener("dragleave", () => box.classList.remove("over"));
+  box.addEventListener("drop", e => {
+    e.preventDefault(); box.classList.remove("over");
+    const f = e.dataTransfer.files[0];
+    if (f && !S.importing) importBackup(f);
+  });
+  return box;
+}
+
 // Linux, Windows and Apple logos: Font Awesome Free 6.7.2 brand icons, CC BY 4.0,
 // https://fontawesome.com/license/free (Copyright 2024 Fonticons, Inc.)
 const OS_ICONS = {
@@ -672,6 +741,7 @@ function intro() {
     h("h2", {}, "Before you start"),
     h("p", { class: "lede" }, "This writes a hotspot setup onto a freshly flashed SD card. The Pi installs DMRHost" +
       " and the dmrdash dashboard on its first boot."),
+    importEl(),
     needEl(),
     h("h3", { class: "sub" }, "How will you flash the card?"),
     h("div", { class: "choices flash", role: "radiogroup", "aria-label": "How will you flash the card?" },

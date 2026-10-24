@@ -4,6 +4,7 @@
     python3 wizard.py              opens the wizard in your browser
     python3 wizard.py --cli        asks the questions in the terminal
     python3 wizard.py --cli --answers answers.json [--boot PATH] [--yes]
+    python3 wizard.py --cli --import WPSD_Config_....zip
 
 The browser wizard is served on 127.0.0.1 only, behind a random token.
 """
@@ -78,11 +79,20 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._authorised():
             return self._send(403, {"error": "bad token"})
+        path = self.path.split("?", 1)[0]
+        if path == "/api/import":
+            # the backup zip itself is the body, not JSON
+            n = int(self.headers.get("Content-Length", 0))
+            if n > hotspot.BACKUP_MAX:
+                return self._send(413, {"error": "That file is too big to be a WPSD or Pi-Star backup."})
+            try:
+                return self._send(200, hotspot.read_backup(self.rfile.read(n)))
+            except ValueError as e:
+                return self._send(200, {"error": str(e)})
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         except ValueError:
             return self._send(400, {"error": "bad JSON"})
-        path = self.path.split("?", 1)[0]
         if path == "/api/check":
             a, err = hotspot.validate(body.get("answers", {}))
             only = set(body.get("fields") or hotspot.FIELDS)
@@ -182,8 +192,18 @@ def suggest_ids(answers: dict) -> None:
         answers["dmr_id"] = str(hits[0]["id"])
 
 
-def run_cli(answers_file: str | None, boot: str | None, yes: bool) -> int:
+def run_cli(answers_file: str | None, boot: str | None, yes: bool, backup: str | None = None) -> int:
     answers = hotspot.defaults()
+    if backup:
+        try:
+            imported = hotspot.read_backup(Path(backup).read_bytes())
+        except (OSError, ValueError) as e:
+            print(f"{backup}: {e}")
+            return 1
+        answers.update(imported["answers"])
+        print(f"Read {backup}:")
+        for note in imported["notes"]:
+            print(f"  {note}")
     if answers_file:
         answers.update(json.loads(Path(answers_file).read_text(encoding="utf-8")))
     interactive = not (answers_file and yes)
@@ -248,6 +268,8 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Set up a Raspberry Pi OS card as a DMRHost hotspot.")
     p.add_argument("--cli", action="store_true", help="ask in the terminal instead of the browser")
     p.add_argument("--answers", help="JSON file of answers (keys as in hotspot.SECTIONS)")
+    p.add_argument("--import", dest="backup", metavar="ZIP",
+                   help="start from a WPSD or Pi-Star configuration backup")
     p.add_argument("--boot", help="path of the card's mounted boot partition")
     p.add_argument("--yes", action="store_true", help="don't ask; with --answers, fully unattended")
     p.add_argument("--port", type=int, default=0, help="port for the browser wizard (default: any free one)")
@@ -259,9 +281,9 @@ def main() -> int:
         n = len(hotspot.fetch_masters())
         print(f"{n} BrandMeister masters")
         return 0 if n else 1
-    if args.cli or args.answers:
+    if args.cli or args.answers or args.backup:
         try:
-            return run_cli(args.answers, args.boot, args.yes)
+            return run_cli(args.answers, args.boot, args.yes, args.backup)
         except (KeyboardInterrupt, EOFError):
             print()
             return 130

@@ -89,6 +89,10 @@ You answer the questions once, on your computer, and the Pi sets itself up on it
    same questions in the terminal instead. You can fill in the answers while Imager is still writing.
    Type your callsign and the wizard looks up your DMR IDs on radioid.net. Picking one also picks the BrandMeister
    master it last used.
+
+   Moving from WPSD or Pi-Star? Download its configuration backup (Configuration → Backup/Restore) and load the
+   .zip on the wizard's Start page. It fills in your callsign, ID, frequencies, BrandMeister master and password,
+   Wi-Fi, hostname and API key, and you add a login. In the terminal: `--cli --import WPSD_Config_....zip`.
 4. Pick the card and write. Eject it, put it in the Pi with the hat on, and power it up.
 5. The first boot takes 5 to 15 minutes. Then the hotspot logs in to BrandMeister, the OLED lights up, and the
    dashboard is at `http://<hostname>.local:8080`.

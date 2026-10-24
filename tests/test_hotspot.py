@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 from pathlib import Path
 
@@ -262,6 +263,67 @@ class RadioID(unittest.TestCase):
     def test_offline(self):
         with mock.patch("urllib.request.urlopen", side_effect=OSError("offline")):
             self.assertEqual(hotspot.lookup_ids("CT7BLE"), [])
+
+
+def backup_zip(files, folder=""):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for name, text in files.items():
+            z.writestr(folder + name, text)
+    return buf.getvalue()
+
+
+# trimmed from a Pi-Star / WPSD backup: MMDVMHost talks to BrandMeister through DMRGateway
+BACKUP = {
+    "mmdvmhost": "[General]\nCallsign=ct7ble\nId=268051302\nDuplex=1\nDisplay=OLED\n\n"
+                 "[Info]\nRXFrequency=438800000\nTXFrequency=431200000\nLocation=Povoa, PT\nURL=https://www.qrz.com/db/CT7BLE\n\n"
+                 "[Modem]\nRXOffset=-275\n\n[DMR]\nEnable=1\nColorCode=2\n\n"
+                 "[DMR Network]\nEnable=1\nAddress=127.0.0.1\nPort=62031\nPassword=none\n\n[OLED]\nType=6\n",
+    "dmrgateway": "[DMR Network 1]\nEnabled=1\nName=BM_2682_Portugal\nAddress=193.137.237.12\nPort=62031\n"
+                  "Password=\"s3cret$pw\"\n\n[DMR Network 2]\nEnabled=1\nName=DMR+_IPSC2\nAddress=1.2.3.4\nPassword=PASSWORD\n",
+    "wpa_supplicant.conf": "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\ncountry=pt\n\n"
+                           "network={\n\tssid=\"Cafe\"\n\tpsk=\"latte1234\"\n}\n\n"
+                           "network={\n\tssid=\"Home Wi-Fi\"\n\tpsk=" + "ab" * 32 + "\n\tpriority=5\n}\n",
+    "hostname": "pi-star\n",
+    "bmapi.key": "[key]\napikey=APIKEY123\n",
+    "config.php": "<?php\ndate_default_timezone_set('Europe/Lisbon');\n",
+    "ysfgateway": "[General]\nCallsign=CT7BLE\n",
+}
+
+
+class ImportBackup(unittest.TestCase):
+    def test_wpsd_backup(self):
+        r = hotspot.read_backup(backup_zip(BACKUP), MASTERS)
+        a = r["answers"]
+        self.assertEqual(a["callsign"], "CT7BLE")
+        self.assertEqual((a["dmr_id"], a["id_suffix"]), ("2680513", "02"))
+        self.assertEqual((a["hat"], a["rx_freq"], a["tx_freq"]), ("duplex", "438.800", "431.200"))
+        self.assertEqual((a["rx_offset"], a["color_code"], a["oled"]), ("-275", "2", "sh1106"))
+        self.assertEqual((a["master"], a["bm_password"]), ("2682", "s3cret$pw"))
+        self.assertEqual((a["hostname"], a["timezone"], a["api_key"]), ("pi-star", "Europe/Lisbon", "APIKEY123"))
+        # the highest priority network wins, and its hashed key is kept as is
+        self.assertEqual((a["wifi_ssid"], a["wifi_password"], a["wifi_country"]), ("Home Wi-Fi", "ab" * 32, "PT"))
+        self.assertTrue(any("2 Wi-Fi networks" in n for n in r["notes"]))
+        # with a login added, what came out of the backup passes as it is
+        _, err = hotspot.validate({**hotspot.defaults(), **a, "username": "joel", "password": "longenough"}, MASTERS)
+        self.assertEqual(err, {})
+
+    def test_direct_master_and_simplex(self):
+        mm = ("[General]\nCallsign=CT7BLE\nId=2680513\nDuplex=0\nDisplay=None\n[Info]\nRXFrequency=433412500\n"
+              "TXFrequency=433412500\n[DMR Network]\nAddress=bm.example.org\nPort=55555\nPassword=pw\n")
+        r = hotspot.read_backup(backup_zip({"mmdvmhost": mm}, folder="WPSD_Config/"), MASTERS)
+        a = r["answers"]
+        self.assertEqual((a["dmr_id"], a["hat"], a["rx_freq"], a["oled"]), ("2680513", "simplex", "433.4125", "none"))
+        self.assertNotIn("tx_freq", a)
+        self.assertNotIn("id_suffix", a)
+        self.assertEqual(a["master"], "bm.example.org:55555")
+        self.assertTrue(any("268051301" in n for n in r["notes"]))
+
+    def test_not_a_backup(self):
+        with self.assertRaises(ValueError):
+            hotspot.read_backup(b"not a zip")
+        with self.assertRaises(ValueError):
+            hotspot.read_backup(backup_zip({"hosts": "127.0.0.1 localhost\n"}))
 
 
 class Shell(unittest.TestCase):

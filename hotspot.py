@@ -276,6 +276,187 @@ def lookup_ids(callsign: str, timeout: float = 8) -> list:
     return _ids_cache[call]
 
 
+# --- importing a WPSD or Pi-Star backup -------------------------------------------
+# The dashboards' "Backup/Restore" zip holds /etc/mmdvmhost, /etc/dmrgateway, the
+# Wi-Fi settings and more, flat at its top level. Only answers come out of it: the
+# zip is read in memory and nothing in it is run or written anywhere.
+
+BACKUP_MAX = 16 * 1024 * 1024
+BACKUP_FILES = ("mmdvmhost", "dmrgateway", "wpa_supplicant.conf", "hostname", "bmapi.key",
+                "config.php", "WPSD-Dashboard-Config.ini")
+
+
+def _ini(text: str) -> dict:
+    """A forgiving INI reader: {section: {key: value}}, keys lower-cased, first value wins."""
+    out, sec = {}, None
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if ln.startswith("[") and ln.endswith("]"):
+            sec = out.setdefault(ln[1:-1].strip().lower(), {})
+        elif sec is not None and "=" in ln and not ln.startswith(("#", ";")):
+            k, v = ln.split("=", 1)
+            sec.setdefault(k.strip().lower(), v.strip())
+    return out
+
+
+def _unquote(v: str) -> str:
+    return v[1:-1] if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'" else v
+
+
+def _hz_to_mhz(v: str) -> str:
+    if not v.isdigit():
+        return ""
+    mhz = f"{int(v) / 1e6:.6f}".rstrip("0")
+    return mhz + "0" * (3 - len(mhz.partition(".")[2]))
+
+
+def _wpa_networks(text: str) -> tuple[list, str]:
+    """([{ssid, psk, priority}...], country) from a wpa_supplicant.conf."""
+    country = (re.search(r"(?m)^\s*country\s*=\s*([A-Za-z]{2})\s*$", text) or [None, ""])[1]
+    nets = []
+    for block in re.findall(r"network\s*=\s*\{(.*?)\}", text, flags=re.S):
+        kv = dict(re.findall(r"(?m)^\s*(\w+)\s*=\s*(.*?)\s*$", block))
+        ssid = kv.get("ssid", "")
+        if ssid.startswith('"'):
+            ssid = _unquote(ssid)
+        elif re.fullmatch(r"(?:[0-9a-fA-F]{2})+", ssid):  # an SSID written as hex bytes
+            ssid = bytes.fromhex(ssid).decode("utf-8", "replace")
+        if not ssid or kv.get("disabled") == "1":
+            continue
+        psk = kv.get("psk", "")
+        psk = _unquote(psk) if psk.startswith('"') else psk if re.fullmatch(r"[0-9a-fA-F]{64}", psk) else ""
+        prio = kv.get("priority", "0")
+        nets.append({"ssid": ssid, "psk": psk, "priority": int(prio) if prio.lstrip("-").isdigit() else 0})
+    nets.sort(key=lambda n: -n["priority"])  # stable: the first of equals stays first
+    return nets, country.upper()
+
+
+def read_backup(data: bytes, masters: list | None = None) -> dict:
+    """Wizard answers from a WPSD or Pi-Star configuration backup (zip).
+    Returns {"answers": {...}, "notes": [...]}; raises ValueError if it isn't one."""
+    import io
+    import zipfile
+    if len(data) > BACKUP_MAX:
+        raise ValueError("That file is too big to be a WPSD or Pi-Star backup.")
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile:
+        raise ValueError("That isn't a zip file. In WPSD or Pi-Star, use Configuration → Backup/Restore → Download.")
+    files, nm = {}, []
+    with z:
+        for info in z.infolist():
+            # by base name, so a backup that was unpacked and zipped again into a folder works too
+            name = info.filename.replace("\\", "/").rsplit("/", 1)[-1]
+            if info.is_dir() or info.file_size > 1024 * 1024:
+                continue
+            if name in BACKUP_FILES or name.endswith(".nmconnection"):
+                try:
+                    text = z.read(info).decode("utf-8", "replace")
+                except (zipfile.BadZipFile, RuntimeError, OSError, NotImplementedError):
+                    continue  # encrypted or damaged: skip that one file
+                if name.endswith(".nmconnection"):
+                    nm.append(text)
+                else:
+                    files.setdefault(name, text)
+    if "mmdvmhost" not in files:
+        raise ValueError("No mmdvmhost settings in that zip. Is it a WPSD or Pi-Star configuration backup?")
+
+    a, notes = {}, []
+    mm = _ini(files["mmdvmhost"])
+    gen, info, modem, dmr = (mm.get(s, {}) for s in ("general", "info", "modem", "dmr"))
+    call = gen.get("callsign", "").upper()
+    if re.fullmatch(r"[A-Z0-9]{3,8}", call):
+        a["callsign"] = call
+    hid = gen.get("id") or dmr.get("id") or ""
+    if re.fullmatch(r"[1-9][0-9]{6,8}", hid):
+        a["dmr_id"] = hid[:7]
+        if len(hid) == 9:
+            a["id_suffix"] = hid[7:]
+        elif len(hid) == 8:
+            a["id_suffix"] = "0" + hid[7]
+        else:
+            notes.append(f"The old hotspot used your plain DMR ID, {hid}. This one adds the ESSID: "
+                         f"{hid}{FIELDS['id_suffix']['default']} unless you change it.")
+    duplex = gen.get("duplex", "1") != "0"
+    a["hat"] = "duplex" if duplex else "simplex"
+    rx, tx = _hz_to_mhz(info.get("rxfrequency", "")), _hz_to_mhz(info.get("txfrequency", ""))
+    if rx:
+        a["rx_freq"] = rx
+    if tx and duplex:
+        a["tx_freq"] = tx
+    for key, src in (("location", info.get("location", "")), ("url", info.get("url", ""))):
+        if src and not re.search(r"[\x00-\x1f\x7f]", src):
+            a[key] = src
+    if re.fullmatch(r"[+-]?[0-9]{1,5}", modem.get("rxoffset", "")):
+        a["rx_offset"] = modem["rxoffset"]
+    if dmr.get("colorcode", "").isdigit():
+        a["color_code"] = dmr["colorcode"]
+    display = gen.get("display", "").lower()
+    if display == "oled":
+        a["oled"] = {"6": "sh1106"}.get(mm.get("oled", {}).get("type", ""), "ssd1306")
+    elif display:
+        a["oled"] = "none"
+        if display not in ("none", ""):
+            notes.append(f"The old hotspot drove a {gen['display']} display; this installer supports OLEDs only.")
+
+    # BrandMeister: straight from MMDVMHost, or through DMRGateway (127.0.0.1)
+    net = mm.get("dmr network", {})
+    address, port, password, name = net.get("address", ""), net.get("port", ""), net.get("password", ""), ""
+    if address in ("127.0.0.1", "localhost", "") and "dmrgateway" in files:
+        gw = _ini(files["dmrgateway"])
+        for sec in sorted(s for s in gw if re.fullmatch(r"dmr network \d+", s)):
+            g = gw[sec]
+            if g.get("enabled", "1") != "0" and (g.get("name", "").upper().startswith("BM")
+                                                 or "brandmeister" in g.get("address", "").lower()):
+                address, port, password, name = g.get("address", ""), g.get("port", ""), g.get("password", ""), g.get("name", "")
+                break
+        else:
+            address = ""
+    password = _unquote(password)
+    if password and password.lower() != "passw0rd":
+        a["bm_password"] = password
+    if address and address not in ("127.0.0.1", "localhost"):
+        masters = masters if masters is not None else fetch_masters()
+        by_name = re.match(r"BM_(\d{4})", name)
+        hit = next((m for m in masters if m["address"] == address), None)
+        if hit:
+            a["master"] = str(hit["id"])
+        elif by_name and any(m["id"] == int(by_name[1]) for m in masters):
+            a["master"] = by_name[1]
+        elif re.fullmatch(r"[A-Za-z0-9.-]+", address):
+            a["master"] = address + (f":{port}" if port.isdigit() and int(port) != MASTER_PORT else "")
+    if "bm_password" not in a:
+        notes.append("No hotspot security password in the backup: type it on the Station step.")
+
+    host = files.get("hostname", "").strip().lower()
+    if re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?", host):
+        a["hostname"] = host
+    for text in (files.get("WPSD-Dashboard-Config.ini", ""), files.get("config.php", "")):
+        m = re.search(r"date_default_timezone_set\(\s*['\"]([^'\"]+)['\"]", text) or \
+            re.search(r"(?im)^\s*time_?zone\s*=\s*['\"]?([A-Za-z_]+/[A-Za-z0-9_/+-]+)", text)
+        if m:
+            a["timezone"] = m[1]
+            break
+
+    nets, country = _wpa_networks(files.get("wpa_supplicant.conf", ""))
+    for text in nm:  # NetworkManager profiles (WPSD on bookworm)
+        c = _ini(text)
+        if c.get("wifi", {}).get("ssid"):
+            nets.append({"ssid": c["wifi"]["ssid"], "psk": c.get("wifi-security", {}).get("psk", ""), "priority": 0})
+    if nets:
+        a["wifi_ssid"], a["wifi_password"] = nets[0]["ssid"], nets[0]["psk"]
+        if country:
+            a["wifi_country"] = country
+        if len(nets) > 1:
+            notes.append(f"The backup has {len(nets)} Wi-Fi networks; this sets up {nets[0]['ssid']} only.")
+
+    key = re.search(r"(?m)^\s*apikey\s*=\s*(\S+)", files.get("bmapi.key", ""))
+    if key and key[1].lower() != "none":
+        a["api_key"] = key[1]
+    notes.append("A backup has no logins for this installer: choose your username, SSH key or password on the Pi step.")
+    return {"answers": a, "notes": notes}
+
+
 # --- validation -----------------------------------------------------------------
 
 def _mhz(text: str) -> int | None:
@@ -351,7 +532,9 @@ def validate(raw: dict, masters: list | None = None) -> tuple[dict, dict]:
           "Like Europe/Lisbon.")
     if a["wifi_ssid"]:
         check("wifi_ssid", len(a["wifi_ssid"].encode()) <= 32, "At most 32 bytes.")
-        check("wifi_password", 8 <= len(a["wifi_password"]) <= 63, "8 to 63 characters, or blank for an open network.")
+        # 64 hex digits is the hashed key wpa_passphrase writes, as Pi-Star and WPSD store it
+        check("wifi_password", 8 <= len(a["wifi_password"]) <= 63 or re.fullmatch(r"[0-9a-fA-F]{64}", a["wifi_password"]),
+              "8 to 63 characters, or blank for an open network.")
         if not a["wifi_country"]:
             err["wifi_country"] = "Required with Wi-Fi."
         check("wifi_country", re.fullmatch(r"[A-Z]{2}", a["wifi_country"]), "Two letters, like PT.")
