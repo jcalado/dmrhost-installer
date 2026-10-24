@@ -94,7 +94,7 @@ strong { color: var(--white); font-weight: 600; }
 
 /* ---------- type ---------- */
 .label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--legend); text-transform: uppercase; }
-h1, h2, .display { font-family: var(--readout); font-weight: 800; margin: 0; }
+h1, h2, .display { font-family: var(--readout); font-weight: 800; margin: 0; text-wrap: balance; }
 h1 { font-size: clamp(40px, 6vw, 62px); line-height: 1.03; }
 h2 { font-size: clamp(30px, 4vw, 40px); line-height: 1.1; }
 h3 { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.35; }
