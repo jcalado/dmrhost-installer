@@ -176,6 +176,7 @@ button.busy::after { content: ""; position: absolute; left: 0; bottom: 0; width:
   button.busy::after { width: 100%; animation: pulse 1.2s ease-in-out infinite alternate; }
   .ready path { animation: none; stroke-dashoffset: 0; }
   .radar { animation: pulse 1.2s ease-in-out infinite alternate; box-shadow: none; }
+  .flash .opt.picked svg { animation: none; }
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes pulse { from { opacity: .2; } to { opacity: .7; } }
@@ -262,6 +263,14 @@ a.dl svg { width: 18px; height: 18px; }
 .get p.dl-note { margin: var(--s2) 0 0; font-size: 13px; color: var(--legend-dim); }
 .get p.more { margin: auto 0 0; padding-top: var(--s3); font-size: 13px; }
 .choices.flash { margin: 0 0 var(--s4); }
+.flash .opt { display: grid; grid-template-columns: auto 1fr; column-gap: var(--s4); align-items: center; }
+.flash .opt svg { grid-row: span 2; color: var(--legend-dim); transition: color .15s var(--ease-out); }
+.flash .opt.sel svg { color: var(--rx-text); }
+/* picking one: the robot hops, the hand waves */
+.flash .opt.picked svg.imager { animation: hop .45s var(--ease-out); }
+.flash .opt.picked svg.self { transform-origin: 50% 90%; animation: wave .6s var(--ease-out); }
+@keyframes hop { 40% { transform: translateY(-5px) scale(1.06); } 70% { transform: translateY(1px); } }
+@keyframes wave { 20% { transform: rotate(-16deg); } 45% { transform: rotate(12deg); } 70% { transform: rotate(-6deg); } }
 .get:has(> div:only-child) { grid-template-columns: 1fr; }
 ol.how code { font: 12px var(--mono); }
 ol.how code.cmd { font-size: 12px; margin: var(--s2) 0 var(--s2); white-space: pre; }
@@ -637,6 +646,23 @@ function osIcon(k) {
   return svg;
 }
 
+// Robot and hand: Lucide icons ("bot", "hand"), ISC licence, https://lucide.dev/license
+const FLASH_ICONS = {
+  imager: ["M12 8V4H8", "M4 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z", "M2 14h2", "M20 14h2",
+    "M15 13v2", "M9 13v2"],
+  self: ["M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2", "M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2",
+    "M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8",
+    "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"],
+};
+function flashIcon(k) {
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  for (const [a, v] of [["width", 36], ["height", 36], ["viewBox", "0 0 24 24"], ["aria-hidden", "true"], ["fill", "none"],
+    ["stroke", "currentColor"], ["stroke-width", "1.5"], ["stroke-linecap", "round"], ["stroke-linejoin", "round"],
+    ["class", k]]) svg.setAttribute(a, v);
+  for (const d of FLASH_ICONS[k]) { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); svg.append(p); }
+  return svg;
+}
+
 function intro() {
   // one button for this computer's system, the others in a menu
   const ua = navigator.userAgent;
@@ -653,7 +679,7 @@ function intro() {
   const pick = (val, name, desc) => h("label", { class: "opt" + (flash === val ? " sel" : "") + (S.picked === "flash" && flash === val ? " picked" : "") },
     h("input", { type: "radio", name: "flash", value: val, checked: flash === val,
       onchange: () => { S.flash = val; S.picked = "flash"; render(); } }),
-    h("b", {}, name), h("span", {}, desc));
+    flashIcon(val), h("b", {}, name), h("span", {}, desc));
   const imagerBox = h("div", {},
     h("h3", { class: "sub" }, "Raspberry Pi Imager"),
     h("p", {}, "Downloads the OS and writes it to the card."),
