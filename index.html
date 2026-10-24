@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DMR hotspot setup for BrandMeister · DMRHost installer</title>
-<meta name="description" content="Set up a BrandMeister DMR hotspot on a Raspberry Pi without Linux. The installer configures your SD card; the Pi handles the rest on its first boot.">
+<meta name="description" content="Set up a BrandMeister DMR hotspot on a Raspberry Pi without Linux, or switch from WPSD or Pi-Star. A wizard prepares the SD card; the Pi does the rest.">
 <link rel="canonical" href="https://jcalado.com/dmrhost-installer/">
 <meta name="theme-color" content="#1d2023">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DMRHost hotspot installer">
 <meta property="og:title" content="DMR hotspot setup for BrandMeister · DMRHost installer">
-<meta property="og:description" content="Set up a BrandMeister DMR hotspot on a Raspberry Pi without Linux. The installer configures your SD card; the Pi handles the rest on its first boot.">
+<meta property="og:description" content="Set up a BrandMeister DMR hotspot on a Raspberry Pi without Linux, or switch from WPSD or Pi-Star. A wizard prepares the SD card; the Pi does the rest.">
 <meta property="og:url" content="https://jcalado.com/dmrhost-installer/">
 <meta property="og:image" content="https://jcalado.com/dmrhost-installer/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -47,25 +47,23 @@
 
 <header class="wrap nav">
   <a class="nav-brand" href="./">DMRHost hotspot installer</a>
-  <nav class="audience" aria-label="Choose your path">
-    <a href="./" aria-current="page"><span class="audience-led" aria-hidden="true"></span>New to DMR</a>
-    <a href="from-wpsd.html"><span class="audience-led" aria-hidden="true"></span>Coming from WPSD</a>
-  </nav>
   <nav class="nav-links" aria-label="Main">
-    <a class="hide-sm" href="#need">What you need</a>
+    <a class="hide-sm" href="#how">How it works</a>
     <a class="hide-sm" href="#tour">Dashboard</a>
+    <a class="hide-sm" href="#need">What you need</a>
+    <a class="hide-sm" href="#from-wpsd">From WPSD</a>
     <a class="btn btn-go" href="#download">Download</a>
   </nav>
 </header>
 
 <main id="main">
 
-  <!-- Hero -->
+  <!-- Hero: for everyone, with a signpost for each audience -->
   <section class="wrap hero">
     <div class="hero-copy">
-      <span class="tag">NEW TO DMR? START HERE</span>
-      <h1>Set up your first DMR hotspot without the Linux homework.</h1>
-      <p class="lede">If you can write an SD card and fill in a form, you can get on BrandMeister tonight. A wizard on your computer sets up the Raspberry Pi before it ever boots. There are no terminal commands or config files to worry about.</p>
+      <span class="tag">RASPBERRY PI + MMDVM_HS · BRANDMEISTER</span>
+      <h1>Your DMR hotspot, without the Linux homework.</h1>
+      <p class="lede">If you can write an SD card and fill in a form, you can get on BrandMeister tonight. A wizard on your computer sets up the Raspberry Pi before it ever boots, and it installs BrandMeister’s DMRHost and a dashboard by itself. There are no terminal commands or config files to worry about.</p>
       <div class="actions">
         <a class="btn btn-go btn-lg" href="#download">Download the installer</a>
         <a class="text-link" href="#need">Check what you need first</a>
@@ -93,69 +91,17 @@
         </div>
       </figure>
     </div>
+    <nav class="paths" aria-label="Where to start">
+      <a href="#basics"><b>New to DMR?</b><span>What a hotspot is, and the five words you’ll meet</span><i aria-hidden="true">↓</i></a>
+      <a href="#from-wpsd"><b>Coming from WPSD or Pi-Star?</b><span>What changes, and when to stay put</span><i aria-hidden="true">↓</i></a>
+    </nav>
   </section>
 
-  <!-- What's a hotspot -->
-  <section class="section" id="what">
-    <div class="wrap">
-      <div class="head">
-        <span class="label">What is a hotspot?</span>
-        <h2>A tiny personal repeater on your desk.</h2>
-        <p>No repeater in range? A hotspot listens to your radio over a few metres of UHF and links your voice to BrandMeister over the internet. Other hams worldwide hear you on the same talkgroup.</p>
-      </div>
-      <ol class="flow">
-        <li><b>Your radio</b><span>A DMR handheld or mobile</span></li>
-        <li class="hop" aria-hidden="true">UHF</li>
-        <li class="lcd"><b>Hotspot</b><span>Raspberry Pi + MMDVM_HS hat. This is what we set up.</span></li>
-        <li class="hop" aria-hidden="true">INTERNET</li>
-        <li><b>BrandMeister</b><span>The worldwide DMR network</span></li>
-        <li class="hop" aria-hidden="true">TG 91</li>
-        <li><b>Everyone else</b><span>On hotspots and repeaters worldwide</span></li>
-      </ol>
-    </div>
-  </section>
-
-  <!-- What you need -->
-  <section class="section" id="need">
-    <div class="wrap">
-      <div class="head">
-        <span class="label">What you need</span>
-        <h2>Your hotspot shopping list</h2>
-      </div>
-      <div class="grid">
-        <div class="card">
-          <h3>A Raspberry Pi</h3>
-          <p>You will need a Zero 2 W, 3 or 4. The Zero 2 W is small, cheap, and runs most hotspots. The Pi 5 is not supported yet.</p>
-        </div>
-        <div class="card">
-          <h3>An MMDVM_HS hat</h3>
-          <p>This small radio board plugs onto the Pi’s pins. You can choose simplex (one frequency) or duplex (two). An OLED screen is a helpful extra.</p>
-        </div>
-        <div class="card">
-          <h3>An SD card, 8 GB or more</h3>
-          <p>You also need a way to plug it into your computer.</p>
-        </div>
-        <div class="card">
-          <h3>A BrandMeister account</h3>
-          <p>Set a <strong>hotspot security password</strong> in SelfCare first. This is different from your login password, and the wizard shows you where to find it. You will also need a <strong>SelfCare API key</strong> to manage talkgroups from your dashboard.</p>
-        </div>
-        <div class="card">
-          <h3>A DMR radio and a DMR ID</h3>
-          <p>Your ID comes from radioid.net. Just type your callsign into the wizard and it finds the ID for you.</p>
-        </div>
-        <div class="card">
-          <h3>Your amateur radio licence</h3>
-          <p>A hotspot is a transmitter. Pick frequencies that your licence and local band plan allow.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Steps -->
+  <!-- How it works -->
   <section class="section" id="how">
     <div class="wrap">
       <div class="head">
-        <span class="label">How it goes</span>
+        <span class="label">How it works</span>
         <h2>Three steps, about one cup of tea.</h2>
       </div>
       <ol class="steps">
@@ -191,49 +137,12 @@
     </div>
   </section>
 
-  <!-- Radio channel -->
-  <section class="section">
-    <div class="wrap split">
-      <div class="head">
-        <span class="label">On your radio</span>
-        <h2>Add a channel using the wizard’s numbers.</h2>
-        <p>The hotspot’s receive frequency is your radio’s transmit frequency, and vice versa. The wizard shows both from your radio’s perspective, so you can copy them straight into your codeplug.</p>
-      </div>
-      <figure class="module channel" style="margin:0">
-        <dl class="lcd">
-          <div><dt>YOUR RADIO TX</dt><dd>432.0000</dd></div>
-          <div><dt>YOUR RADIO RX</dt><dd>434.0000</dd></div>
-          <div><dt>COLOUR CODE</dt><dd>1</dd></div>
-          <div><dt>SLOTS</dt><dd>TS1 + TS2</dd></div>
-        </dl>
-        <figcaption class="fine">Example values for a duplex hat. Use your own.</figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <!-- Glossary -->
-  <section class="section">
-    <div class="wrap">
-      <div class="head">
-        <span class="label">Words you will meet</span>
-        <h2>DMR explained in five terms</h2>
-      </div>
-      <dl class="glossary">
-        <div><dt>Talkgroup (TG)</dt><dd>A shared channel on the network. TG 91 is worldwide, and most countries have their own.</dd></div>
-        <div><dt>Timeslot (TS1, TS2)</dt><dd>DMR fits two conversations onto one frequency. A simplex hat uses TS2 only.</dd></div>
-        <div><dt>Colour code (CC)</dt><dd>This works like a CTCSS tone for DMR. The radio and hotspot must match; 1 is fine.</dd></div>
-        <div><dt>Static talkgroup</dt><dd>This channel is always on, so you hear it without keying up. The dashboard sets these for you.</dd></div>
-        <div><dt>Dynamic talkgroup</dt><dd>This turns on when you key up, and times out when the channel goes quiet.</dd></div>
-      </dl>
-    </div>
-  </section>
-
   <!-- Dashboard tour -->
   <section class="section deep" id="tour">
     <div class="wrap">
       <div class="head">
         <span class="label">Dashboard tour</span>
-        <h2>See who is talking, from your phone.</h2>
+        <h2>See who is talking, and change talkgroups, from your phone.</h2>
         <p>Once it is running, open <code>http://&lt;hotspot name&gt;.local:8080</code> on any phone or computer on your network.</p>
       </div>
       <div class="tour">
@@ -257,26 +166,170 @@
         <img src="assets/dmrdash-phone.webp" width="780" height="1688" loading="lazy" alt="The dmrdash dashboard displayed on a mobile phone screen.">
         <ul>
           <li><strong>Made for phones</strong>: it is readable at arm’s length while you hold the radio in your other hand.</li>
-          <li><strong>Presets</strong>: save sets like “Everyday” or “Net night” and switch them with one tap.</li>
-          <li><strong>Scheduled talkgroups</strong>: set your weekly net’s talkgroup to turn on only when the net meets.</li>
-          <li><strong>Help with reception</strong>: if your audio is choppy, it suggests a better RX offset and tunes it while you key up.</li>
+          <li><strong>Presets</strong>: save sets like “Everyday” or “Net night” and switch them with one tap. Only the difference is changed.</li>
+          <li><strong>Timed statics</strong>: set your weekly net’s talkgroup to turn on only when the net meets, entered in local time.</li>
+          <li><strong>Help with reception</strong>: if your audio is choppy, it suggests a better RX offset and tunes it while you key up, then asks before keeping it.</li>
           <li><strong>Clear warnings</strong>: a red banner appears when something is wrong, and it stays quiet when things are fine.</li>
         </ul>
       </div>
     </div>
   </section>
 
-  <!-- WPSD -->
-  <section class="section">
+  <!-- What you need -->
+  <section class="section" id="need">
     <div class="wrap">
-      <div class="module callout">
-        <div>
-          <span class="label">Used WPSD or Pi-Star?</span>
-          <p class="display">Only ever on BrandMeister DMR? Run BrandMeister’s own software instead.</p>
-          <p class="muted">Use the same Pi and hat. This card does one thing well: DMR on BrandMeister, managing your talkgroups without opening SelfCare.</p>
-        </div>
-        <a class="btn" href="from-wpsd.html">Read what changes</a>
+      <div class="head">
+        <span class="label">What you need</span>
+        <h2>Your hotspot shopping list</h2>
+        <p>Already run a hotspot? Your Pi and MMDVM_HS hat work as they are.</p>
       </div>
+      <div class="grid">
+        <div class="card">
+          <h3>A Raspberry Pi</h3>
+          <p>You will need a Zero 2 W, 3 or 4. The Zero 2 W is small, cheap, and runs most hotspots. The Pi 5 is not supported yet.</p>
+        </div>
+        <div class="card">
+          <h3>An MMDVM_HS hat</h3>
+          <p>This small radio board plugs onto the Pi’s pins. You can choose simplex (one frequency) or duplex (two). An OLED screen is a helpful extra.</p>
+        </div>
+        <div class="card">
+          <h3>An SD card, 8 GB or more</h3>
+          <p>You also need a way to plug it into your computer.</p>
+        </div>
+        <div class="card">
+          <h3>A BrandMeister account</h3>
+          <p>Set a <strong>hotspot security password</strong> in SelfCare first. This is different from your login password, and the wizard shows you where to find it. You will also need a <strong>SelfCare API key</strong> to manage talkgroups from your dashboard.</p>
+        </div>
+        <div class="card">
+          <h3>A DMR radio and a DMR ID</h3>
+          <p>Your ID comes from radioid.net. Just type your callsign into the wizard and it finds the ID for you.</p>
+        </div>
+        <div class="card">
+          <h3>Your amateur radio licence</h3>
+          <p>A hotspot is a transmitter. Pick frequencies that your licence and local band plan allow.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- New to DMR -->
+  <section class="section" id="basics">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">New to DMR?</span>
+        <h2>A tiny personal repeater on your desk.</h2>
+        <p>No repeater in range? A hotspot listens to your radio over a few metres of UHF and links your voice to BrandMeister over the internet. Other hams worldwide hear you on the same talkgroup.</p>
+      </div>
+      <ol class="flow">
+        <li><b>Your radio</b><span>A DMR handheld or mobile</span></li>
+        <li class="hop" aria-hidden="true">UHF</li>
+        <li class="lcd"><b>Hotspot</b><span>Raspberry Pi + MMDVM_HS hat. This is what we set up.</span></li>
+        <li class="hop" aria-hidden="true">INTERNET</li>
+        <li><b>BrandMeister</b><span>The worldwide DMR network</span></li>
+        <li class="hop" aria-hidden="true">TG 91</li>
+        <li><b>Everyone else</b><span>On hotspots and repeaters worldwide</span></li>
+      </ol>
+
+      <div class="split sub">
+        <div class="head">
+          <h3 class="display sub-h">Add a channel using the wizard’s numbers.</h3>
+          <p>The hotspot’s receive frequency is your radio’s transmit frequency, and vice versa. The wizard shows both from your radio’s perspective, so you can copy them straight into your codeplug.</p>
+        </div>
+        <figure class="module channel" style="margin:0">
+          <dl class="lcd">
+            <div><dt>YOUR RADIO TX</dt><dd>432.0000</dd></div>
+            <div><dt>YOUR RADIO RX</dt><dd>434.0000</dd></div>
+            <div><dt>COLOUR CODE</dt><dd>1</dd></div>
+            <div><dt>SLOTS</dt><dd>TS1 + TS2</dd></div>
+          </dl>
+          <figcaption class="fine">Example values for a duplex hat. Use your own.</figcaption>
+        </figure>
+      </div>
+
+      <div class="sub">
+        <h3 class="display sub-h">DMR explained in five terms</h3>
+        <dl class="glossary">
+          <div><dt>Talkgroup (TG)</dt><dd>A shared channel on the network. TG 91 is worldwide, and most countries have their own.</dd></div>
+          <div><dt>Timeslot (TS1, TS2)</dt><dd>DMR fits two conversations onto one frequency. A simplex hat uses TS2 only.</dd></div>
+          <div><dt>Colour code (CC)</dt><dd>This works like a CTCSS tone for DMR. The radio and hotspot must match; 1 is fine.</dd></div>
+          <div><dt>Static talkgroup</dt><dd>This channel is always on, so you hear it without keying up. The dashboard sets these for you.</dd></div>
+          <div><dt>Dynamic talkgroup</dt><dd>This turns on when you key up, and times out when the channel goes quiet.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- Coming from WPSD -->
+  <section class="section deep" id="from-wpsd">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Coming from WPSD or Pi-Star?</span>
+        <h2>Only on BrandMeister DMR? Run BrandMeister’s own host software.</h2>
+        <p>Use your existing Pi and MMDVM_HS hat. This card runs DMRHost, the hotspot software built by BrandMeister, and manages your talkgroups without opening SelfCare.</p>
+      </div>
+      <div class="table-box">
+        <table class="compare">
+          <thead>
+            <tr>
+              <td style="width: 18%"></td>
+              <th scope="col">A MULTIMODE IMAGE</th>
+              <th scope="col" class="ours">THIS CARD</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Setup</th><td data-label="Multimode image">Boot first, then find the Pi and configure it in its web page</td><td class="ours" data-label="This card">Answer a wizard on your computer first; the Pi comes up fully configured</td></tr>
+            <tr><th scope="row">Host software</th><td data-label="Multimode image">MMDVMHost and gateways for many modes</td><td class="ours" data-label="This card">BrandMeister DMRHost, straight from BrandMeister’s apt repository</td></tr>
+            <tr><th scope="row">Talkgroups</th><td data-label="Multimode image">Log in to SelfCare to change statics</td><td class="ours" data-label="This card">Add statics, timed statics and presets right from the dashboard</td></tr>
+            <tr><th scope="row">Dashboard</th><td data-label="Multimode image">Status and last heard</td><td class="ours" data-label="This card">Both timeslots, link health, BER trends, and an RX offset tuner</td></tr>
+            <tr><th scope="row">Scope</th><td data-label="Multimode image">Many modes and networks</td><td class="ours" data-label="This card">DMR on BrandMeister, and absolutely nothing else.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="split sub" style="align-items: flex-start">
+        <div class="head">
+          <h3 class="display sub-h">Copy five numbers, then swap your cards.</h3>
+          <p>Start with a new SD card and keep your current one safe. Copy these details from your current hotspot into the wizard. Your radio’s codeplug stays exactly the same.</p>
+          <ol class="muted moves">
+            <li>Write Raspberry Pi OS Lite (64-bit) to the new card</li>
+            <li>Run the wizard and type in your numbers</li>
+            <li>Swap the cards and power up. Give it 5 to 15 minutes.</li>
+          </ol>
+        </div>
+        <figure class="module bring" style="margin:0">
+          <figcaption class="label" style="padding: 2px 6px 10px">Bring these over</figcaption>
+          <ul class="lcd">
+            <li><span>RX frequency</span><span>___.____ MHz</span></li>
+            <li><span>TX frequency</span><span>___.____ MHz</span></li>
+            <li><span>RX offset</span><span>____ Hz</span></li>
+            <li><span>Colour code</span><span>__</span></li>
+            <li><span>BrandMeister master</span><span>____</span></li>
+          </ul>
+          <p class="fine" style="margin: 10px 6px 4px">The wizard finds your DMR ID from your callsign. You’ll also need your BrandMeister hotspot password, and a SelfCare API key to manage talkgroups.</p>
+        </figure>
+      </div>
+
+      <div class="fit">
+        <div class="module">
+          <span class="label" style="display: inline-flex; align-items: center; gap: 8px; color: var(--rx-text)"><span class="led" aria-hidden="true"></span>This card suits you if</span>
+          <ul>
+            <li>You only use DMR, and strictly on BrandMeister</li>
+            <li>You change talkgroups often, especially before nets</li>
+            <li>You want a dashboard that reads easily on a phone</li>
+            <li>You prefer setting things up once on your computer</li>
+          </ul>
+        </div>
+        <div class="module">
+          <span class="label" style="display: inline-flex; align-items: center; gap: 8px"><span class="led led-off" aria-hidden="true"></span>Stay on WPSD if</span>
+          <ul class="muted">
+            <li>You use D-Star, YSF, P25, NXDN or M17</li>
+            <li>You connect to TGIF, FreeDMR or other DMR networks</li>
+            <li>Your hotspot is a Pi 5, which we do not support yet</li>
+            <li>You need proven software, as this project is still early</li>
+          </ul>
+        </div>
+      </div>
+      <p class="fine">Try it out on a spare card first: your current card stays exactly as it is, so you can swap back anytime. WPSD and Pi-Star are separate projects and are not affiliated with this one.</p>
     </div>
   </section>
 
@@ -365,7 +418,6 @@ chmod +x dmrhost-installer-macos-arm64
     <a href="https://github.com/jcalado/dmrhost-installer">GitHub</a>
     <a href="https://github.com/BrandMeister/DMRHost">BrandMeister DMRHost</a>
     <a href="https://github.com/jcalado/dmrdash">dmrdash</a>
-    <a href="from-wpsd.html">Coming from WPSD</a>
     <span class="end">CT7BLE · 73</span>
   </div>
 </footer>
