@@ -21,7 +21,7 @@ import urllib.request
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 MASTERS_URL = "https://api.brandmeister.network/v2/master/"
 RADIOID_URL = "https://radioid.net/api/dmr/user/?callsign="
 MASTER_PORT = 62031
