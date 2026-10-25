@@ -108,15 +108,15 @@
         <li class="module step">
           <span class="step-n" aria-hidden="true">1</span>
           <div class="step-body">
-            <h3>Write Raspberry Pi OS to the card</h3>
-            <p>With the free <a href="https://www.raspberrypi.com/software/">Raspberry Pi Imager</a>. Pick <em>Raspberry Pi OS Lite (64-bit)</em> and click <em>Skip customisation</em>.</p>
+            <h3>Format the card and write Raspberry Pi OS</h3>
+            <p>Put an SD card in your computer and open the free <a href="https://www.raspberrypi.com/software/">Raspberry Pi Imager</a>. Pick <em>Raspberry Pi OS Lite (64-bit)</em>, then click <em>Skip customisation</em>: don’t set a name, user or Wi-Fi there, because the wizard does that. Imager formats the card as it writes.</p>
           </div>
         </li>
         <li class="module step">
           <span class="step-n" aria-hidden="true">2</span>
           <div class="step-body">
-            <h3>Fill in the wizard</h3>
-            <p>Provide your callsign, Wi-Fi details, hat type, and frequencies. It opens in your browser and explains each field. You can fill it in while Imager writes the card.</p>
+            <h3>Run the wizard on the same computer</h3>
+            <p>When Imager has finished, open the wizard with the card still in your computer. If Imager ejected it, take it out and put it back in. Give your callsign, Wi-Fi, hat and frequencies, and the wizard sets up DMRHost on the card. Installing the dmrdash dashboard is your choice.</p>
           </div>
         </li>
         <li class="module step">
@@ -127,7 +127,7 @@
             <ol class="log">
               <li><span class="ok">OK</span><span>Installs BrandMeister DMRHost</span></li>
               <li><span class="ok">OK</span><span>Sets up your hat, frequencies and OLED</span></li>
-              <li><span class="ok">OK</span><span>Installs the dmrdash dashboard</span></li>
+              <li><span class="ok">OK</span><span>Installs the dmrdash dashboard, if you chose it</span></li>
               <li><span class="ok">OK</span><span>Wipes your passwords off the card</span></li>
               <li class="air"><span class="ok">ON AIR</span><span>The OLED lights up. You’re on BrandMeister.</span></li>
             </ol>
@@ -146,16 +146,16 @@
         <p>Once it is running, open <code>http://&lt;hotspot name&gt;.local:8080</code> on any phone or computer on your network.</p>
       </div>
       <div class="tour">
-        <img src="assets/dmrdash-desktop.webp" srcset="assets/dmrdash-desktop-1280.webp 1280w, assets/dmrdash-desktop.webp 2560w" sizes="(max-width: 1040px) 100vw, 992px" width="2560" height="1800" loading="lazy" alt="The dmrdash dashboard shows status lights, timeslot 1 transmitting, timeslot 2 receiving, and the last heard list.">
-        <span class="pin" style="left:49.6%; top:3.2%" aria-hidden="true">1</span>
+        <img src="assets/dmrdash-desktop.webp" srcset="assets/dmrdash-desktop-1280.webp 1280w, assets/dmrdash-desktop.webp 2560w" sizes="(max-width: 1040px) 100vw, 992px" width="2560" height="1800" loading="lazy" alt="The dmrdash dashboard shows the hotspot status light, timeslot 1 transmitting, timeslot 2 receiving, and the last heard list.">
+        <span class="pin" style="left:63.4%; top:3.2%" aria-hidden="true">1</span>
         <span class="pin" style="left:26.5%; top:19.5%" aria-hidden="true">2</span>
         <span class="pin" style="left:19.5%; top:26.6%" aria-hidden="true">3</span>
         <span class="pin" style="left:86.5%; top:11.4%" aria-hidden="true">4</span>
         <span class="pin" style="left:44.8%; top:36.8%" aria-hidden="true">5</span>
-        <span class="pin" style="left:13.8%; top:44.4%" aria-hidden="true">6</span>
+        <span class="pin" style="left:16%; top:44.4%" aria-hidden="true">6</span>
       </div>
       <ol class="tour-key">
-        <li><span class="pin-key" aria-hidden="true">1</span><span><strong>Status lights.</strong> <span class="muted">Check your hotspot software, radio board and BrandMeister link. Green is good.</span></span></li>
+        <li><span class="pin-key" aria-hidden="true">1</span><span><strong>Status light.</strong> <span class="muted">One light for your hotspot software, radio board and BrandMeister link. Green is good. Tap it for the details and controls.</span></span></li>
         <li><span class="pin-key" aria-hidden="true">2</span><span><strong>Who is talking.</strong> <span class="muted">The panel turns red when you transmit, and cream when it is someone else.</span></span></li>
         <li><span class="pin-key" aria-hidden="true">3</span><span><strong>Where.</strong> <span class="muted">See the talkgroup and its name, with the speaker’s name below.</span></span></li>
         <li><span class="pin-key" aria-hidden="true">4</span><span><strong>Stop call.</strong> <span class="muted">Cut off a conversation you do not want to hear on your hotspot.</span></span></li>
