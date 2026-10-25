@@ -14,9 +14,10 @@ Power=1
 Latitude=0.0
 Longitude=0.0
 Height=0
-Location=${location}
+# Quoted: unquoted, DMRHost cuts a value at its first #.
+Location="${location}"
 Description=${description}
-URL=${url}
+URL="${url}"
 
 [Log]
 # Logging levels, 0=No logging, 1=Debug, 2=Message, 3=Info, 4=Warning, 5=Error, 6=Fatal
@@ -96,7 +97,8 @@ Frequency=439987500
 Enable=1
 Address=${master_address}
 Port=${master_port}
-Password=${bm_password}
+# Quoted, so a # in the password is kept.
+Password="${bm_password}"
 # Options=
 Slot1=${slot1}
 Slot2=1

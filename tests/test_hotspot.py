@@ -38,7 +38,8 @@ def ini(text):
             sec = ln.strip("[]")
         elif "=" in ln and not ln.startswith("#"):
             k, v = ln.split("=", 1)
-            out[(sec, k)] = v
+            # as DMRHost's Conf.cpp reads it: quotes stripped, or cut at a # comment
+            out[(sec, k)] = v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v.split("#")[0].rstrip(" \t")
     return out
 
 
@@ -97,6 +98,13 @@ class Render(unittest.TestCase):
         self.assertEqual(c[("OLED", "Type")], "3")
         self.assertEqual(c[("OLED", "Scroll")], "0")
         self.assertEqual(c[("Display", "Enable")], "1")
+
+    def test_mmdvm_ini_keeps_hash(self):
+        c = ini(hotspot.mmdvm_ini(answers(bm_password='pa#ss "w" ', location="Lisboa #1",
+                                          url="https://example.org/#me")[0]))
+        self.assertEqual(c[("DMR Network", "Password")], 'pa#ss "w"')
+        self.assertEqual(c[("Info", "Location")], "Lisboa #1")
+        self.assertEqual(c[("Info", "URL")], "https://example.org/#me")
 
     def test_mmdvm_ini_simplex_no_display(self):
         c = ini(hotspot.mmdvm_ini(answers(hat="simplex", tx_freq="", oled="none")[0]))
