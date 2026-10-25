@@ -113,6 +113,9 @@ SECTIONS = [
          "find_link": "https://brandmeister.network/#/profile/{callsign}/api", "find_link_text": "Open your API keys page"},
         {"key": "pin", "label": "Dashboard PIN", "kind": "password", "when": ["dashboard", True],
          "help": "Optional. Asked for before any change."},
+        {"key": "shell", "label": "Console in the browser", "kind": "bool", "default": False, "when": ["dashboard", True],
+         "help": "Sign in to the Pi from the dashboard with your login password. It crosses your network "
+                 "unencrypted, which SSH doesn't. The dashboard's SSH key works either way."},
         {"key": "port", "label": "Dashboard port", "kind": "text", "default": "8080", "when": ["dashboard", True]},
     ]},
 ]
@@ -541,6 +544,9 @@ def validate(raw: dict, masters: list | None = None) -> tuple[dict, dict]:
     if a["dashboard"]:
         check("port", a["port"].isdigit() and 1 <= int(a["port"]) <= 65535, "1 to 65535.")
         check("pin", re.fullmatch(r"\S{4,}", a["pin"]), "At least 4 characters, no spaces.")
+        # the console signs in through the Pi's sshd, which a key-only login set up refuses passwords on
+        if a["shell"] and not a["password"]:
+            err["shell"] = "Needs a login password on the Pi step: with only an SSH key, the Pi refuses password logins."
     return a, err
 
 
@@ -626,8 +632,10 @@ def setup_env(a: dict) -> str:
 
 
 def dmrdash_conf(a: dict) -> str:
+    # ssh_user fills in the dashboard's SSH command and ssh:// link; shell turns on its console (dmrdash 1.5.0)
     return json.dumps({"device_id": int(hotspot_id(a)), "api_key": a["api_key"], "pin": a["pin"],
-                       "listen": "0.0.0.0", "port": int(a["port"])}, indent=2) + "\n"
+                       "listen": "0.0.0.0", "port": int(a["port"]), "ssh_user": a["username"],
+                       "shell": bool(a["shell"])}, indent=2) + "\n"
 
 
 def edit_config_txt(text: str, oled: bool) -> str:

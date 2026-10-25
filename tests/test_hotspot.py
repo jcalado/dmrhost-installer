@@ -127,7 +127,16 @@ class Render(unittest.TestCase):
 
     def test_dmrdash_conf(self):
         c = json.loads(hotspot.dmrdash_conf(answers()[0]))
-        self.assertEqual(c, {"device_id": 268051301, "api_key": "KEY", "pin": "1234", "listen": "0.0.0.0", "port": 8080})
+        self.assertEqual(c, {"device_id": 268051301, "api_key": "KEY", "pin": "1234", "listen": "0.0.0.0", "port": 8080,
+                             "ssh_user": "joel", "shell": False})
+        c = json.loads(hotspot.dmrdash_conf(answers(shell=True, password="correct horse")[0]))
+        self.assertEqual((c["ssh_user"], c["shell"]), ("joel", True))
+
+    def test_console_needs_a_password(self):
+        # GOOD logs in with a key only, and the Pi then refuses passwords: the console could never sign in
+        self.assertIn("shell", answers(shell=True)[1])
+        self.assertNotIn("shell", answers(shell=True, password="correct horse")[1])
+        self.assertNotIn("shell", answers(shell=True, dashboard=False)[1])  # hidden with the dashboard off
 
     def test_config_txt(self):
         stock = (FIXTURE / "config.txt").read_text()

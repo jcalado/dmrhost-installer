@@ -23,5 +23,6 @@
   "dashboard": true,
   "api_key": "",
   "pin": "",
+  "shell": false,
   "port": "8080"
 }

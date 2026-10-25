@@ -378,9 +378,10 @@ function fieldEl(f) {
           onchange: () => { set(val); S.picked = f.key; render(); } }),
         h("b", {}, name), desc ? h("span", {}, desc) : null)));
   } else if (f.kind === "bool") {
-    return h("div", { class: "field" },
+    return h("div", { class: "field" + (err ? " bad" : ""), "data-key": f.key },
       h("label", { class: "switch" }, h("input", { type: "checkbox", id, checked: !!v,
         onchange: e => { set(e.target.checked); render(); } }), f.label),
+      err ? h("div", { class: S.freshErrors ? "err new" : "err" }, err) : null,
       f.help ? h("div", { class: "help" }, f.help) : null);
   } else if (f.kind === "master") {
     input = masterEl(f, set);
@@ -787,14 +788,16 @@ function idsEl() {
   return box;
 }
 
-// The Dashboard step's pitch: what dmrdash (the version on the card, 1.0.0) does
+// The Dashboard step's pitch: what dmrdash (the version on the card, 1.5.0) does
 const DASH_FEATURES = [
   ["Both timeslots, live", "Who's talking, on which talkgroup, their name and talker alias, with a running timer. Like a dual-VFO radio."],
-  ["Talkgroups from your phone", "Add and remove static talkgroups on either slot without logging in to SelfCare. Removals can be undone.", true],
+  ["Talkgroups from your phone", "Add and remove static talkgroups, or schedule them for set days and hours, without logging in to SelfCare.", true],
   ["Presets", "Save sets like \u201cEveryday\u201d or \u201cNet night\u201d and switch in one tap. Only what differs is changed.", true],
   ["Stop call", "Drop the current call route straight from the dashboard.", true],
-  ["Last heard", "Sort, filter, hide kerchunks and colour by caller or talkgroup. Callsigns open QRZ.com, talkgroups open Hoseline."],
-  ["Live log", "The hotspot's log as it happens, kept in RAM."],
+  ["Hotspot controls", "Behind the status light: RF power, another BrandMeister master, and restarting DMRHost or the Pi."],
+  ["RX offset tuning", "Your radio's BER over time, and a guided run that finds the RX offset with the lowest."],
+  ["Last heard and live log", "Sort, filter and colour the calls; callsigns open QRZ.com. The hotspot's log as it happens, kept in RAM."],
+  ["SSH from the dashboard", "The ssh command and a link to your phone's SSH app; turn on the console to sign in from the browser."],
 ];
 function pitchEl() {
   return h("section", { class: "pitch", "aria-label": "What dmrdash does" },

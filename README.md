@@ -136,7 +136,8 @@ On the first boot, cloud-init runs `firstboot.sh --stage`, which moves `dmrhost-
 - installs `/etc/MMDVM.ini` (the packaged one is kept as `/etc/MMDVM.ini.dist`)
 - adds a weekly radioid.net download to `/usr/local/etc/user.csv`, trimmed to ID, callsign and name to save RAM
 - loads `i2c-dev` before DisplayServer starts (without it the OLED stays blank)
-- installs dmrdash with `/etc/dmrdash.conf`
+- installs dmrdash with `/etc/dmrdash.conf`, with your username as `ssh_user` for its SSH key, and its console
+  turned on if you chose it (that needs a login password)
 - sets your login password, if you chose one
 - deletes the copied secrets, marks itself done and disables itself
 
@@ -217,7 +218,7 @@ shellcheck payload/firstboot.sh fetch-dmrdash.sh
 
 - `hotspot.py` holds the questions (`SECTIONS`), validation and rendering, shared by both front ends.
 - `wizard.py` holds the browser server and the command line. `ui.html` is the browser wizard: one file, no build step.
-- `assets/dmrdash.webp` is the dashboard preview on the Dashboard step: dmrdash 1.4.0 with a staged scene
+- `assets/dmrdash.webp` is the dashboard preview on the Dashboard step: dmrdash 1.4.0 (unchanged in 1.5.0) with a staged scene
   (CT7BLE on RF on TS1, VK2ABCD on TS2), at 1280×530 CSS px and 2× (2560×1060). Update it, and the step's
   feature list, when the bundled dmrdash changes.
 - `payload/` is what goes onto the card. `MMDVM.ini.in` started as a working CT7BLE hotspot's config.
