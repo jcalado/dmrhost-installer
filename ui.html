@@ -24,6 +24,25 @@ body { margin: 0; background: var(--panel); color: var(--white); font: 14px/1.45
 header { display: flex; align-items: baseline; gap: var(--s3); margin-bottom: var(--s5); }
 header h1 { font-size: 17px; font-weight: 600; margin: 0; }
 header .ver { color: var(--legend-dim); font: 12px var(--mono); }
+/* Language: a flag and its name, opening a small menu of the others */
+details.langs { position: relative; margin-left: auto; }
+details.langs summary { display: flex; align-items: center; gap: var(--s2); padding: 6px 10px; border: 1px solid var(--rule-2);
+  border-radius: 4px; background: var(--panel); color: var(--legend); font-size: 13px; cursor: pointer; list-style: none;
+  transition: border-color .15s var(--ease-out); }
+details.langs summary::-webkit-details-marker { display: none; }
+details.langs summary:hover { border-color: var(--legend-dim); }
+details.langs summary:focus-visible { outline: 2px solid var(--rx); outline-offset: 1px; }
+details.langs summary::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg); transition: transform .15s var(--ease-out); }
+details.langs[open] summary::after { transform: translateY(1px) rotate(225deg); }
+.flag { flex: none; width: 18px; height: 18px; border-radius: 50%; }
+.lang-list { position: absolute; z-index: 6; right: 0; top: calc(100% + var(--s1)); min-width: 180px; padding: var(--s1) 0;
+  background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  animation: fade .12s ease-out; }
+.lang-list button { display: flex; align-items: center; gap: var(--s3); width: 100%; padding: var(--s2) var(--s3);
+  border: 0; border-radius: 0; background: none; color: var(--white); font-weight: 400; text-align: left; }
+.lang-list button:hover, .lang-list button:focus-visible { background: var(--panel-3); outline: none; transform: none; }
+.lang-list button[aria-current=true] { color: var(--rx-text); font-weight: 600; }
 
 /* Step bar: each segment fills like an LED meter. On "Card ready" they all light in turn. */
 ol.steps { list-style: none; display: flex; gap: var(--s1); padding: 0; margin: 0 0 var(--s5); flex-wrap: wrap; }
@@ -312,7 +331,8 @@ a:focus-visible { outline: 2px solid var(--rx); outline-offset: 2px; }
 </head>
 <body>
 <div class="wrap">
-  <header><h1>DMRHost hotspot installer</h1><span class="ver" id="ver"></span></header>
+  <header><h1 id="title">DMRHost hotspot installer</h1><span class="ver" id="ver"></span>
+    <details class="langs" id="lang" hidden></details></header>
   <ol class="steps" id="steps"></ol>
   <main class="card" id="main" aria-live="polite"><p class="muted">Loading…</p></main>
 </div>
@@ -331,16 +351,28 @@ function h(tag, attrs, ...kids) {
   for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : String(k));
   return el;
 }
+// Text in the wizard's language: S.strings maps the English to it, and {name} takes args.name.
+// tx() also takes elements, for a sentence with a link or bold words in it.
+function t(text, args) {
+  const s = S.strings[text] || text;
+  return args ? s.replace(/\{(\w+)\}/g, (m, k) => k in args ? args[k] : m) : s;
+}
+function tx(text, args) {
+  return (S.strings[text] || text).split(/\{(\w+)\}/).map((p, i) => i % 2 ? (p in args ? args[p] : `{${p}}`) : p)
+    .filter(p => p !== "");
+}
 async function api(path, body) {
-  const r = await fetch(path, body === undefined ? { headers: { "X-Token": TOKEN } } :
-    { method: "POST", headers: { "X-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (r.status === 403) throw new Error("This page's link is out of date. Use the address the installer printed in the terminal.");
+  const headers = { "X-Token": TOKEN, ...(S.lang ? { "X-Lang": S.lang } : {}) };
+  const r = await fetch(path, body === undefined ? { headers } :
+    { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.status === 403) throw new Error(t("This page's link is out of date. Use the address the installer printed in the terminal."));
   return r.json();
 }
 
-const S = { sections: [], answers: {}, errors: {}, step: 0, masters: null, volumes: [], boot: "", summary: [], dmrdash: "" };
+const S = { sections: [], answers: {}, errors: {}, step: 0, masters: null, volumes: [], boot: "", summary: [], dmrdash: "",
+  lang: "", strings: {} };
 // steps: intro, one per section, write, done
-const stepNames = () => ["Start", ...S.sections.map(s => s.title), "Write"];
+const stepNames = () => [t("Start"), ...S.sections.map(s => s.title), t("Write")];
 
 function visible(f) {
   if (!f.when) return true;
@@ -355,6 +387,7 @@ function renderSteps() {
     ol.replaceChildren(...names.map((n, i) => h("li", { style: `--i:${i}`, onclick: () => {
       if (ol.children[i].classList.contains("done")) go(i); } }, n)));
   [...ol.children].forEach((li, i) => {
+    li.textContent = names[i];
     li.className = i === S.step ? "on" : i < S.step && !finished ? "done" : "";
   });
   ol.classList.toggle("lit", finished);
@@ -424,7 +457,7 @@ function findEl(f) {
   const call = (S.answers.callsign || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   const link = f.find_link && (call || !f.find_link.includes("{callsign}")) ? f.find_link.replace("{callsign}", call) : "";
   return h("div", { class: "find" },
-    link ? h("div", {}, ext(link, f.find_link_text || link), h("span", { class: "muted" }, " (opens BrandMeister)")) : null,
+    link ? h("div", {}, ext(link, f.find_link_text || link), h("span", { class: "muted" }, " ", t("(opens BrandMeister)"))) : null,
     h("div", { class: "muted" }, f.find));
 }
 
@@ -432,17 +465,20 @@ function masterEl(f, set) {
   const v = S.answers.master ?? "";
   if (S.masters === null) {
     api("/api/masters").then(m => { S.masters = m; preselectMaster(); render(); });
-    return h("input", { type: "text", disabled: true, value: "Fetching the BrandMeister master list…" });
+    return h("input", { type: "text", disabled: true, value: t("Fetching the BrandMeister master list…") });
   }
   return masterPicker(v, set);
 }
 
-// BrandMeister only gives country codes; the browser knows their names.
-const regionName = (() => {
-  let dn = null;
-  try { dn = new Intl.DisplayNames(["en"], { type: "region" }); } catch (_) { /* old browser: codes only */ }
-  return cc => { try { return (dn && dn.of(cc)) || cc; } catch (_) { return cc; } };
-})();
+// BrandMeister only gives country codes; the browser knows their names, in the wizard's language.
+let regions = null;
+function regionName(cc) {
+  if (!regions || regions.lang !== S.lang) {
+    regions = { lang: S.lang, dn: null };
+    try { regions.dn = new Intl.DisplayNames([S.lang || "en"], { type: "region" }); } catch (_) { /* old browser: codes only */ }
+  }
+  try { return (regions.dn && regions.dn.of(cc)) || cc; } catch (_) { return cc; }
+}
 const fold = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const looksLikeAddress = q => /[.:]/.test(q) && !/\s/.test(q);
 
@@ -459,7 +495,7 @@ function masterPicker(v, set) {
   const list = h("div", { class: "combo-list", id: "f-master-list", role: "listbox", hidden: true });
   const input = h("input", { id: "f-master", type: "text", role: "combobox", autocomplete: "off",
     spellcheck: "false", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": "f-master-list",
-    placeholder: rows.length ? "Search: Portugal, PT, 2682…" : "Master address, optionally host:port",
+    placeholder: rows.length ? t("Search: Portugal, PT, 2682…") : t("Master address, optionally host:port"),
     value: masterLabel(v) });
   let shown = [], active = -1;
   const current = () => S.answers.master ?? "";
@@ -488,7 +524,7 @@ function masterPicker(v, set) {
       const pick = e => { e.preventDefault(); choose(m.typed || String(m.id)); };
       if (m.typed) {
         list.append(h("div", { class: cls + " typed", role: "option", id: `f-master-o${i}`, onmousedown: pick },
-          "Use ", h("b", {}, m.typed)));
+          tx("Use {address}", { address: h("b", {}, m.typed) })));
         return;
       }
       if (m.country !== group) {
@@ -499,7 +535,7 @@ function masterPicker(v, set) {
         "aria-selected": String(m.id) === current() ? "true" : "false" },
         h("b", {}, m.id), h("span", {}, m.address)));
     });
-    if (!shown.length) list.append(h("div", { class: "combo-empty" }, "No master matches. Type an address to use it as is."));
+    if (!shown.length) list.append(h("div", { class: "combo-empty" }, t("No master matches. Type an address to use it as is.")));
     input.setAttribute("aria-activedescendant", active >= 0 && shown[active] ? `f-master-o${active}` : "");
     const on = $(".combo-opt.on", list);
     if (on) on.scrollIntoView({ block: "nearest" });
@@ -556,7 +592,7 @@ function refreshLive(tick) {
   const f = n => n == null ? "—" : n.toFixed(4);
   const vals = [f(rx), f(tx), duplex ? "TS1 + TS2" : "TS2"], last = S.live || [];
   S.live = vals;
-  el.replaceChildren(...["YOUR RADIO TX", "YOUR RADIO RX", "SLOTS"].map((name, i) => h("div", {}, h("small", {}, name),
+  el.replaceChildren(...[t("YOUR RADIO TX"), t("YOUR RADIO RX"), t("SLOTS")].map((name, i) => h("div", {}, h("small", {}, name),
     tick && vals[i] !== last[i] ? h("span", { class: "tick" }, vals[i]) : vals[i])));
 }
 
@@ -576,14 +612,15 @@ const ext = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, 
 function resumeEl() {
   if (!S.saved) return null;
   const n = S.sections.length, to = Math.max(1, Math.min(S.saved.step, n));
-  const when = new Date(S.saved.saved * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const when = new Date(S.saved.saved * 1000).toLocaleString(S.lang, { dateStyle: "medium", timeStyle: "short" });
+  const step = S.sections[to - 1].title;
   return h("div", { class: "resume", role: "status" },
-    h("div", {}, h("b", {}, "Welcome back"),
-      h("p", {}, `Your answers from ${when} are filled in, up to the ${S.sections[to - 1].title} step. ` +
-        "Passwords, the API key and the PIN aren't saved, so you'll type those again.")),
+    h("div", {}, h("b", {}, t("Welcome back")),
+      h("p", {}, t("Your answers from {when} are filled in, up to the {step} step.", { when, step }), " ",
+        t("Passwords, the API key and the PIN aren't saved, so you'll type those again."))),
     h("div", { class: "resume-btns" },
-      h("button", { class: "go", onclick: () => go(to) }, `Continue at ${S.sections[to - 1].title}`),
-      h("button", { onclick: startOver }, "Start over")));
+      h("button", { class: "go", onclick: () => go(to) }, t("Continue at {step}", { step })),
+      h("button", { onclick: startOver }, t("Start over"))));
 }
 
 // A WPSD or Pi-Star configuration backup fills in what it can. The installer reads the zip;
@@ -594,7 +631,7 @@ async function importBackup(file) {
   try {
     const res = await fetch("/api/import", { method: "POST", body: file,
       headers: { "X-Token": TOKEN, "Content-Type": "application/zip" } });
-    if (res.status === 403) throw new Error("This page's link is out of date. Use the address the installer printed in the terminal.");
+    if (res.status === 403) throw new Error(t("This page's link is out of date. Use the address the installer printed in the terminal."));
     r = await res.json();
   } catch (e) { r = { error: e.message }; }
   S.importing = false;
@@ -612,12 +649,11 @@ function importEl() {
   const input = h("input", { type: "file", id: "f-backup", accept: ".zip,application/zip", hidden: true,
     onchange: e => { if (e.target.files[0]) importBackup(e.target.files[0]); } });
   const pick = h("button", { type: "button", class: S.importing ? "busy" : null, disabled: !!S.importing,
-    onclick: () => input.click() }, S.importing ? "Reading…" : ok ? "Load another" : "Load backup");
+    onclick: () => input.click() }, S.importing ? t("Reading…") : ok ? t("Load another") : t("Load backup"));
   const box = h("section", { class: "import" + (ok ? " done" : ""), "aria-labelledby": "import-h" },
     h("div", { class: "import-head" },
-      h("div", {}, h("b", { id: "import-h" }, "Moving from WPSD or Pi-Star?"),
-        " Load its backup, or drop the .zip here, to fill in the answers. " +
-        "In its dashboard: Configuration → Backup/Restore → Download Configuration."),
+      h("div", {}, h("b", { id: "import-h" }, t("Moving from WPSD or Pi-Star?")), " ",
+        t("Load its backup, or drop the .zip here, to fill in the answers. In its dashboard: Configuration → Backup/Restore → Download Configuration.")),
       input, pick));
   if (r && r.error) box.append(h("div", { class: "alarm", role: "alert" }, r.file + ": " + r.error));
   if (ok) {
@@ -625,10 +661,10 @@ function importEl() {
     const rows = S.sections.map(s => [s.title, s.fields.filter(f => r.keys.includes(f.key)).map(f => f.label)])
       .filter(([, labels]) => labels.length);
     box.append(h("div", { role: "status" },
-      h("dl", {}, h("dt", {}, "From"), h("dd", {}, h("code", {}, r.file)),
+      h("dl", {}, h("dt", {}, t("From")), h("dd", {}, h("code", {}, r.file)),
         rows.flatMap(([t, labels]) => [h("dt", {}, t), h("dd", {}, labels.join(", "))])),
       r.notes.length ? h("ul", {}, r.notes.map(n => h("li", {}, n))) : null,
-      h("nav", { class: "btns" }, h("span"), h("button", { class: "go", onclick: () => go(1) }, "Check the answers"))));
+      h("nav", { class: "btns" }, h("span"), h("button", { class: "go", onclick: () => go(1) }, t("Check the answers")))));
   }
   box.addEventListener("dragover", e => { e.preventDefault(); box.classList.add("over"); });
   box.addEventListener("dragleave", () => box.classList.remove("over"));
@@ -667,49 +703,53 @@ function intro() {
     linux: { href: armLinux ? LINKS.imager : LINKS.imagerLinux, name: "Linux" },
   };
   const link = (href, text) => h("a", { href, target: "_blank", rel: "noopener" }, text);
+  const image = {
+    download: h("a", { href: LINKS.os }, t("Download Raspberry Pi OS Lite (64-bit)")),
+    sha: ext(LINKS.osSha, "SHA-256"), all: ext(LINKS.osAll, t("all images")),
+    etcher: link(LINKS.etcher, "balenaEtcher"), rufus: ext(LINKS.rufus, "Rufus"),
+  };
   const other = h("details", { class: "other", open: !!S.otherWay, ontoggle: e => { S.otherWay = e.target.open; } },
-    h("summary", {}, "Flash it another way (Etcher, dd)"),
+    h("summary", {}, t("Flash it another way (Etcher, dd)")),
     h("div", { class: "other-body" },
-      h("p", {}, h("a", { href: LINKS.os }, "Download Raspberry Pi OS Lite (64-bit)"), ", about 550 MB (",
-        ext(LINKS.osSha, "SHA-256"), ", ", ext(LINKS.osAll, "all images"), "). Write the .img.xz as it is, no need to unpack it, with ",
-        link(LINKS.etcher, "balenaEtcher"), mine === "win" ? [", ", ext(LINKS.rufus, "Rufus")] : null,
-        mine === "linux" ? " or dd:" : " or any tool you already use."),
+      h("p", {}, mine === "linux"
+        ? tx("{download}, about 550 MB ({sha}, {all}). Write the .img.xz as it is, no need to unpack it, with {etcher} or dd:", image)
+        : mine === "win"
+          ? tx("{download}, about 550 MB ({sha}, {all}). Write the .img.xz as it is, no need to unpack it, with {etcher}, {rufus} or any tool you already use.", image)
+          : tx("{download}, about 550 MB ({sha}, {all}). Write the .img.xz as it is, no need to unpack it, with {etcher} or any tool you already use.", image)),
       mine === "linux" ? [
-        h("code", { class: "cmd" }, "lsblk   # find the card: /dev/sdX or /dev/mmcblkN\n" +
+        h("code", { class: "cmd" }, "lsblk   # " + t("find the card: /dev/sdX or /dev/mmcblkN") + "\n" +
           "xzcat ~/Downloads/*-raspios-*-arm64-lite.img.xz \\\n" +
           "  | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress"),
         h("div", { class: "warn inline", role: "note" }, warnIcon(),
-          h("div", {}, "Check the device name twice: dd overwrites whatever disk you point it at, without asking.")),
+          h("div", {}, t("Check the device name twice: dd overwrites whatever disk you point it at, without asking."))),
       ] : null,
-      h("p", {}, "Don't add any files to the card yourself (", h("code", {}, "ssh"), ", ", h("code", {}, "userconf.txt"),
-        ", Wi-Fi settings). This installer writes everything the Pi needs.")));
+      h("p", {}, tx("Don't add any files to the card yourself ({ssh}, {userconf}, Wi-Fi settings). This installer writes everything the Pi needs.",
+        { ssh: h("code", {}, "ssh"), userconf: h("code", {}, "userconf.txt") }))));
   return [
     resumeEl(),
-    h("h2", {}, "Before you start"),
-    h("p", { class: "lede" }, "This writes a hotspot setup onto a freshly flashed SD card. On its first boot the Pi installs" +
-      " DMRHost and the dmrdash dashboard."),
+    h("h2", {}, t("Before you start")),
+    h("p", { class: "lede" }, t("This writes a hotspot setup onto a freshly flashed SD card. On its first boot the Pi installs DMRHost and the dmrdash dashboard.")),
     h("ol", { class: "plan" },
       h("li", {},
-        h("h3", {}, "Flash Raspberry Pi OS Lite (64-bit) to the SD card"),
+        h("h3", {}, t("Flash Raspberry Pi OS Lite (64-bit) to the SD card")),
         h("div", { class: "get" },
           h("a", { class: "dl", href: imager[mine].href, target: "_blank", rel: "noopener" },
-            osIcon(mine), `Get Raspberry Pi Imager for ${imager[mine].name}`),
+            osIcon(mine), t("Get Raspberry Pi Imager for {os}", { os: imager[mine].name })),
           h("span", { class: "others" }, ["win", "mac", "linux"].filter(k => k !== mine).map(k => link(imager[k].href, imager[k].name)))),
-        armLinux ? h("p", { class: "how-to" }, "On an ARM computer, install it with ", h("code", {}, "sudo apt install rpi-imager"), ".") : null,
-        h("p", { class: "how-to" }, "In Imager pick your Pi, then ", h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"),
-          ", then the card. ", h("b", {}, "Skip \"customise\""), ": this installer sets the user, Wi-Fi and hostname."),
+        armLinux ? h("p", { class: "how-to" }, tx("On an ARM computer, install it with {cmd}.", { cmd: h("code", {}, "sudo apt install rpi-imager") })) : null,
+        h("p", { class: "how-to" }, tx("In Imager pick your Pi, then {os}, then the card. {skip}: this installer sets the user, Wi-Fi and hostname.",
+          { os: h("b", {}, "Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)"), skip: h("b", {}, t("Skip \"customise\"")) })),
         other),
       h("li", {},
-        h("h3", {}, "Take the card out and put it back in"),
-        h("p", {}, "Your computer then mounts its ", h("b", {}, "bootfs"), " partition, which is where the setup goes.")),
+        h("h3", {}, t("Take the card out and put it back in")),
+        h("p", {}, tx("Your computer then mounts its {bootfs} partition, which is where the setup goes.", { bootfs: h("b", {}, "bootfs") }))),
       h("li", {},
-        h("h3", {}, "Answer the questions, then write"),
-        h("p", {}, "You can start now, while the card is being flashed."),
+        h("h3", {}, t("Answer the questions, then write")),
+        h("p", {}, t("You can start now, while the card is being flashed.")),
         importEl())),
     S.dmrdash ? null :
-      h("div", { class: "note" }, "No dmrdash package is bundled (payload/dmrdash_*_all.deb). " +
-        "The Pi will try to download it from GitHub and skips the dashboard if it can't."),
-    nav(null, "Start"),
+      h("div", { class: "note" }, t("No dmrdash package is bundled (payload/dmrdash_*_all.deb). The Pi will try to download it from GitHub and skips the dashboard if it can't.")),
+    nav(null, t("Get started")),
   ];
 }
 
@@ -733,10 +773,10 @@ function idsEl() {
   const box = h("div", { class: "ids", id: "ids", "aria-live": "polite" });
   if (!S.ids) return box;
   if (!S.ids.hits.length) {
-    box.append(h("p", { class: "muted" }, `radioid.net has no DMR ID for ${S.ids.call}.`));
+    box.append(h("p", { class: "muted" }, t("radioid.net has no DMR ID for {call}.", { call: S.ids.call })));
     return box;
   }
-  box.append(h("p", { class: "ids-head" }, S.ids.hits.length > 1 ? `${S.ids.call} has ${S.ids.hits.length} IDs on radioid.net:` : `${S.ids.call} on radioid.net:`),
+  box.append(h("p", { class: "ids-head" }, S.ids.hits.length > 1 ? t("{call} has {n} IDs on radioid.net:", { call: S.ids.call, n: S.ids.hits.length }) : t("{call} on radioid.net:", { call: S.ids.call })),
     h("div", { class: "id-list" }, S.ids.hits.map(r => {
       const where = [r.city, r.country].filter(Boolean).join(", ");
       const on = S.answers.dmr_id === String(r.id);
@@ -749,32 +789,32 @@ function idsEl() {
         } },
         h("b", {}, r.id),
         h("span", {}, [r.name, where].filter(Boolean).join(" · ")),
-        r.lastheard ? h("small", {}, "last heard " + new Date(r.lastheard).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })) : null);
+        r.lastheard ? h("small", {}, t("last heard {date}", { date: new Date(r.lastheard).toLocaleDateString(S.lang, { day: "numeric", month: "short", year: "numeric" }) })) : null);
     })));
   return box;
 }
 
 // The Dashboard step's pitch: what dmrdash (the version on the card, 1.5.0) does
-const DASH_FEATURES = [
-  ["Both timeslots, live", "Who's talking, on which talkgroup, their name and talker alias, with a running timer. Like a dual-VFO radio."],
-  ["Talkgroups from your phone", "Add and remove static talkgroups, or schedule them for set days and hours, without logging in to SelfCare.", true],
-  ["Presets", "Save sets like \u201cEveryday\u201d or \u201cNet night\u201d and switch in one tap. Only what differs is changed.", true],
-  ["Stop call", "Drop the current call route straight from the dashboard.", true],
-  ["Hotspot controls", "Behind the status light: RF power, another BrandMeister master, and restarting DMRHost or the Pi."],
-  ["RX offset tuning", "Your radio's BER over time, and a guided run that finds the RX offset with the lowest."],
-  ["Last heard and live log", "Sort, filter and colour the calls; callsigns open QRZ.com. The hotspot's log as it happens, kept in RAM."],
-  ["SSH from the dashboard", "The ssh command and a link to your phone's SSH app; turn on the console to sign in from the browser."],
+const dashFeatures = () => [
+  [t("Both timeslots, live"), t("Who's talking, on which talkgroup, their name and talker alias, with a running timer. Like a dual-VFO radio.")],
+  [t("Talkgroups from your phone"), t("Add and remove static talkgroups, or schedule them for set days and hours, without logging in to SelfCare."), true],
+  [t("Presets"), t("Save sets like \u201cEveryday\u201d or \u201cNet night\u201d and switch in one tap. Only what differs is changed."), true],
+  [t("Stop call"), t("Drop the current call route straight from the dashboard."), true],
+  [t("Hotspot controls"), t("Behind the status light: RF power, another BrandMeister master, and restarting DMRHost or the Pi.")],
+  [t("RX offset tuning"), t("Your radio's BER over time, and a guided run that finds the RX offset with the lowest.")],
+  [t("Last heard and live log"), t("Sort, filter and colour the calls; callsigns open QRZ.com. The hotspot's log as it happens, kept in RAM.")],
+  [t("SSH from the dashboard"), t("The ssh command and a link to your phone's SSH app; turn on the console to sign in from the browser.")],
 ];
 function pitchEl() {
-  return h("section", { class: "pitch", "aria-label": "What dmrdash does" },
-    h("p", { class: "lede" }, "dmrdash is your hotspot's front panel, in any browser on your network: your phone, laptop or tablet."),
+  return h("section", { class: "pitch", "aria-label": t("What dmrdash does") },
+    h("p", { class: "lede" }, t("dmrdash is your hotspot's front panel, in any browser on your network: your phone, laptop or tablet.")),
     h("figure", {},
       h("img", { src: "/assets/dmrdash.webp", width: 1400, height: 580, loading: "lazy",
-        alt: "dmrdash showing both timeslots live, CT7BLE transmitting on timeslot 1 and VK2ABCD on timeslot 2, with the Last heard list below" }),
-      h("figcaption", {}, "dmrdash on a desktop browser. It fits a phone too.")),
-    h("ul", { class: "feats" }, DASH_FEATURES.map(([t, d, key]) => h("li", {},
-      h("b", {}, t, key ? h("span", { class: "tag" }, "API key") : null), h("span", {}, d)))),
-    h("p", { class: "muted small" }, "Light on the Pi: about 26 MB of memory, and nothing written to the SD card in normal use."));
+        alt: t("dmrdash showing both timeslots live, CT7BLE transmitting on timeslot 1 and VK2ABCD on timeslot 2, with the Last heard list below") }),
+      h("figcaption", {}, t("dmrdash on a desktop browser. It fits a phone too."))),
+    h("ul", { class: "feats" }, dashFeatures().map(([t, d, key]) => h("li", {},
+      h("b", {}, t, key ? h("span", { class: "tag" }, t("API key")) : null), h("span", {}, d)))),
+    h("p", { class: "muted small" }, t("Light on the Pi: about 26 MB of memory, and nothing written to the SD card in normal use.")));
 }
 
 function section(s) {
@@ -793,57 +833,57 @@ function section(s) {
     if (f.key === "hat") kids.push(h("div", { class: "lcd", id: "live" }));
     if (f.key === "id_suffix") { kids.push(idsEl()); if (!S.ids) lookupIds(); }
   }
-  const n = nav("Back", "Next");
+  const n = nav(t("Back"), t("Next"));
   // after an Edit from the review, go straight back to it
   if (S.reviewed && S.step < S.sections.length)
-    n.lastChild.before(h("button", { class: "to-review", onclick: () => forward(true) }, "Back to review"));
+    n.lastChild.before(h("button", { class: "to-review", onclick: () => forward(true) }, t("Back to review")));
   kids.push(n);
   return kids;
 }
 
 function writeStep() {
   const sum = S.summary || { groups: [], radio: {} }, r = sum.radio;
-  const kids = [h("h2", {}, "Check and write"),
-    h("p", { class: "lede" }, "Check your answers, then put the freshly flashed card in and write the setup to it.")];
+  const kids = [h("h2", {}, t("Check and write")),
+    h("p", { class: "lede" }, t("Check your answers, then put the freshly flashed card in and write the setup to it."))];
 
   // what the radio needs, on the same LCD as the Radio step
   kids.push(h("div", { class: "lcd review" },
-    h("div", {}, h("small", {}, "YOUR RADIO TX"), r.tx), h("div", {}, h("small", {}, "YOUR RADIO RX"), r.rx),
-    h("div", {}, h("small", {}, "COLOUR CODE"), r.cc), h("div", {}, h("small", {}, "SLOTS"), r.slots)));
+    h("div", {}, h("small", {}, t("YOUR RADIO TX")), r.tx), h("div", {}, h("small", {}, t("YOUR RADIO RX")), r.rx),
+    h("div", {}, h("small", {}, t("COLOUR CODE")), r.cc), h("div", {}, h("small", {}, t("SLOTS")), r.slots)));
 
   kids.push(h("div", { class: "review-groups" }, sum.groups.map(g => {
     const step = 1 + S.sections.findIndex(s => s.id === g.section);
     return h("section", { class: "rgroup", "aria-label": g.title },
       h("header", {}, h("h3", { class: "sub" }, g.title),
-        h("button", { type: "button", class: "link", onclick: () => go(step), "aria-label": `Edit ${g.title}` }, "Edit")),
+        h("button", { type: "button", class: "link", onclick: () => go(step), "aria-label": t("Edit {section}", { section: g.title }) }, t("Edit"))),
       h("dl", {}, g.rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])));
   })));
 
   // the card: the list refreshes by itself while this step is open
   const ok = S.volumes.filter(v => v.ok);
-  kids.push(h("h3", { class: "sub card-head" }, "SD card"));
+  kids.push(h("h3", { class: "sub card-head" }, t("SD card")));
   if (!S.volumes.length) kids.push(h("div", { class: "waiting", role: "status" },
     h("span", { class: "radar", "aria-hidden": "true" }),
-    h("div", {}, h("b", {}, "Waiting for the card…"),
-      h("div", { class: "muted" }, "Put the freshly flashed card in. It shows up here once your computer mounts its bootfs partition."))));
+    h("div", {}, h("b", {}, t("Waiting for the card…")),
+      h("div", { class: "muted" }, t("Put the freshly flashed card in. It shows up here once your computer mounts its bootfs partition.")))));
   for (const v of S.volumes) kids.push(h("label", { class: "vol" + (v.ok ? "" : " no") + (S.boot === v.path ? " sel" : "") },
     h("input", { type: "radio", name: "vol", checked: S.boot === v.path, disabled: !v.ok,
       onchange: () => { S.boot = v.path; S.typePath = false; render(); } }),
     h("div", {}, h("code", {}, v.path), h("div", { class: "st" }, v.status))));
   if (S.volumes.length && !ok.length) kids.push(h("p", { class: "muted vol-hint" },
-    "None of these can be written. Flash the card again with Raspberry Pi OS Lite (64-bit), then put it back in."));
+    t("None of these can be written. Flash the card again with Raspberry Pi OS Lite (64-bit), then put it back in.")));
   kids.push(S.typePath
     ? h("div", { class: "field typed" },
-        h("label", { class: "l", for: "f-boot" }, "Boot partition path"),
-        h("input", { id: "f-boot", type: "text", class: "mono", placeholder: "/media/you/bootfs or E:\\", value: S.boot,
+        h("label", { class: "l", for: "f-boot" }, t("Boot partition path")),
+        h("input", { id: "f-boot", type: "text", class: "mono", placeholder: t("/media/you/bootfs or E:\\"), value: S.boot,
           oninput: e => { S.boot = e.target.value.trim(); $("nav.btns button.go").disabled = !S.boot; } }),
-        h("div", { class: "help" }, "Checked when you write."))
-    : h("p", { class: "muted vol-hint" }, "Card mounted somewhere unusual? ",
-        h("button", { type: "button", class: "link", onclick: () => { S.typePath = true; render(); $("#f-boot").focus(); } }, "Type its path")));
+        h("div", { class: "help" }, t("Checked when you write.")))
+    : h("p", { class: "muted vol-hint" }, tx("Card mounted somewhere unusual? {link}", { link:
+        h("button", { type: "button", class: "link", onclick: () => { S.typePath = true; render(); $("#f-boot").focus(); } }, t("Type its path")) })));
 
   if (S.writeError) kids.push(h("div", { class: "alarm", role: "alert" }, S.writeError));
-  kids.push(h("p", { class: "muted fine" }, "Only the card's boot partition changes. Your passwords stay on it until the first boot, which moves them off."));
-  const n = nav("Back", S.writing ? "Writing…" : "Write to card", !S.boot || S.writing);
+  kids.push(h("p", { class: "muted fine" }, t("Only the card's boot partition changes. Your passwords stay on it until the first boot, which moves them off.")));
+  const n = nav(t("Back"), S.writing ? t("Writing…") : t("Write to card"), !S.boot || S.writing);
   if (S.writing) n.lastChild.classList.add("busy");
   kids.push(n);
   return kids;
@@ -852,17 +892,19 @@ function writeStep() {
 function done() {
   const a = S.answers;
   return [
-    h("h2", { class: "ok ready" }, checkMark(), "Card ready"),
-    h("p", { class: "lede" }, "Eject the card, put it in the Pi with the hat on, and power it up."),
+    h("h2", { class: "ok ready" }, checkMark(), t("Card ready")),
+    h("p", { class: "lede" }, t("Eject the card, put it in the Pi with the hat on, and power it up.")),
     h("ol", { class: "how" },
-      h("li", {}, "The first boot takes ", h("b", {}, "5 to 15 minutes"), ": it resizes the card, joins the network and installs DMRHost."),
-      h("li", {}, "When it's done the hotspot logs in to BrandMeister" + (a.oled !== "none" ? " and the OLED lights up." : ".")),
-      a.dashboard ? h("li", {}, "Dashboard: ", h("b", {}, `http://${a.hostname}.local:${a.port}`)) : null,
-      h("li", {}, "To watch the setup, or if something goes wrong:")),
+      h("li", {}, tx("The first boot takes {time}: it resizes the card, joins the network and installs DMRHost.",
+        { time: h("b", {}, t("5 to 15 minutes")) })),
+      h("li", {}, a.oled !== "none" ? t("When it's done the hotspot logs in to BrandMeister and the OLED lights up.")
+        : t("When it's done the hotspot logs in to BrandMeister.")),
+      a.dashboard ? h("li", {}, tx("Dashboard: {url}", { url: h("b", {}, `http://${a.hostname}.local:${a.port}`) })) : null,
+      h("li", {}, t("To watch the setup, or if something goes wrong:"))),
     h("code", { class: "cmd" }, `ssh ${a.username}@${a.hostname}.local\ntail -f /var/log/dmrhost-firstboot.log`),
-    h("p", { class: "muted" }, "Files written: " + S.written.join(", ")),
-    h("nav", { class: "btns" }, h("button", { onclick: () => { S.boot = ""; S.writeError = ""; go(S.sections.length + 1); loadVolumes(); } }, "Write another card"),
-      h("button", { class: "go", onclick: async () => { await api("/api/quit", {}); $("#main").replaceChildren(h("p", {}, "The installer has stopped. You can close this tab.")); } }, "Quit")),
+    h("p", { class: "muted" }, t("Files written: {files}", { files: S.written.join(", ") })),
+    h("nav", { class: "btns" }, h("button", { onclick: () => { S.boot = ""; S.writeError = ""; go(S.sections.length + 1); loadVolumes(); } }, t("Write another card")),
+      h("button", { class: "go", onclick: async () => { await api("/api/quit", {}); $("#main").replaceChildren(h("p", {}, t("The installer has stopped. You can close this tab."))); } }, t("Quit"))),
   ];
 }
 
@@ -926,7 +968,7 @@ async function forward(toReview) {
     const r = await api("/api/write", { answers: S.answers, boot: S.boot });
     S.writing = false;
     if (r.written) { S.written = r.written; return go(last + 1); }
-    S.writeError = r.error || "Some answers need fixing: " + Object.keys(r.errors || {}).join(", ");
+    S.writeError = r.error || t("Some answers need fixing: {fields}", { fields: Object.keys(r.errors || {}).join(", ") });
     return render();
   }
   go(S.step + 1);
@@ -989,8 +1031,45 @@ function render() {
   }
 }
 
+// The form and its text come from the installer, in the language it was asked for
+function useForm(f) {
+  S.sections = f.sections; S.lang = f.lang; S.strings = f.strings;
+  document.documentElement.lang = f.lang;
+  document.title = $("#title").textContent = t("DMRHost hotspot installer");
+  const menu = $("#lang");
+  menu.open = false;
+  menu.replaceChildren(
+    h("summary", { "aria-label": t("Language") + ": " + f.langs[f.lang] }, flag(f.lang), f.langs[f.lang]),
+    h("div", { class: "lang-list" }, Object.entries(f.langs).map(([code, name]) =>
+      h("button", { type: "button", lang: code, "aria-current": String(code === f.lang),
+        onclick: () => { menu.open = false; if (code !== S.lang) setLang(code); } }, flag(code), name))));
+  menu.hidden = false;
+}
+// circle-flags (MIT, HatScripts): English as the UK, the rest by their country
+const flag = code => h("img", { class: "flag", alt: "", width: 18, height: 18,
+  src: `/assets/flags/${code === "en" ? "gb" : code.split("-")[1].toLowerCase()}.svg` });
+async function setLang(code) {
+  S.lang = code;
+  api("/api/lang", { lang: code }).catch(() => { /* remembering it is a convenience */ });
+  useForm(await api("/api/form"));
+  // messages already shown came in the old language: ask for them again
+  if (Object.keys(S.errors).length || S.step === S.sections.length + 1) {
+    const r = await api("/api/check", { answers: S.answers });
+    S.errors = Object.fromEntries(Object.entries(r.errors).filter(([k]) => k in S.errors));
+    if (!Object.keys(r.errors).length) S.summary = r.summary;
+  }
+  if (S.step === S.sections.length + 1) loadVolumes();
+  render();
+}
+// the menu closes on a click elsewhere or Escape, like a select
+document.addEventListener("click", e => { if (!$("#lang").contains(e.target)) $("#lang").open = false; });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("#lang").open) { $("#lang").open = false; $("#lang summary").focus(); }
+});
+
 api("/api/form").then(f => {
-  S.sections = f.sections; S.defaults = f.defaults; S.dmrdash = f.dmrdash;
+  useForm(f);
+  S.defaults = f.defaults; S.dmrdash = f.dmrdash;
   S.answers = { ...f.defaults, ...(f.saved ? f.saved.answers : {}) };
   if (f.saved && f.saved.step > 0) { S.saved = f.saved; S.masterTouched = !!f.saved.answers.master; }
   $("#ver").textContent = "v" + f.version;

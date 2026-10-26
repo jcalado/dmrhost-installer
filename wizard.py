@@ -14,6 +14,7 @@ import argparse
 import getpass
 import hmac
 import json
+import re
 import secrets
 import sys
 import threading
@@ -51,18 +52,27 @@ class Handler(BaseHTTPRequestHandler):
         # web page in the same browser can't drive the wizard.
         return hmac.compare_digest(self.headers.get("X-Token", ""), self.token)
 
+    def _set_lang(self):
+        # the page's choice, else the one saved last time, else the browser's
+        hotspot.set_lang(hotspot.pick_lang(self.headers.get("X-Lang") or hotspot.load_prefs().get("lang")
+                                           or self.headers.get("Accept-Language", "")))
+
     def do_GET(self):
+        self._set_lang()
         path = self.path.split("?", 1)[0]
         if path == "/":
             self._send(200, UI.read_bytes(), "text/html; charset=utf-8")
-        elif path == "/assets/dmrdash.webp":
-            self._send(200, (hotspot.resource_dir() / "assets" / "dmrdash.webp").read_bytes(), "image/webp")
+        elif re.fullmatch(r"/assets/(flags/)?[a-z0-9_-]+\.(webp|svg)", path) and \
+                (hotspot.resource_dir() / path.lstrip("/")).is_file():
+            self._send(200, (hotspot.resource_dir() / path.lstrip("/")).read_bytes(),
+                       "image/svg+xml" if path.endswith(".svg") else "image/webp")
         elif not path.startswith("/api/"):
             self._send(404, {"error": "not found"})
         elif not self._authorised():
             self._send(403, {"error": "bad token"})
         elif path == "/api/form":
-            self._send(200, {"sections": hotspot.SECTIONS, "defaults": hotspot.defaults(),
+            self._send(200, {"sections": hotspot.sections(), "defaults": hotspot.defaults(),
+                             "lang": hotspot.lang(), "langs": hotspot.LANGS, "strings": hotspot.catalog(hotspot.lang()),
                              "version": hotspot.VERSION,
                              "dmrdash": (hotspot.find_dmrdash_deb() or Path("")).name,
                              "saved": hotspot.load_progress()})
@@ -77,6 +87,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
     def do_POST(self):
+        self._set_lang()
         if not self._authorised():
             return self._send(403, {"error": "bad token"})
         path = self.path.split("?", 1)[0]
@@ -84,7 +95,7 @@ class Handler(BaseHTTPRequestHandler):
             # the backup zip itself is the body, not JSON
             n = int(self.headers.get("Content-Length", 0))
             if n > hotspot.BACKUP_MAX:
-                return self._send(413, {"error": "That file is too big to be a WPSD or Pi-Star backup."})
+                return self._send(413, {"error": hotspot.t("That file is too big to be a WPSD or Pi-Star backup.")})
             try:
                 return self._send(200, hotspot.read_backup(self.rfile.read(n)))
             except ValueError as e:
@@ -115,6 +126,12 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     hotspot.save_progress(body.get("answers") or {}, int(body.get("step") or 0))
             except (OSError, ValueError, TypeError) as e:
+                return self._send(200, {"error": str(e)})
+            self._send(200, {})
+        elif path == "/api/lang":
+            try:
+                hotspot.save_prefs(lang=hotspot.pick_lang(body.get("lang", "")))
+            except OSError as e:
                 return self._send(200, {"error": str(e)})
             self._send(200, {})
         elif path == "/api/quit":

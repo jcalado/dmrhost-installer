@@ -206,7 +206,7 @@ To build one yourself, on the system it is for:
 pip install pyinstaller
 ./fetch-dmrdash.sh
 pyinstaller --onefile --name dmrhost-installer --add-data "ui.html:." --add-data "payload:payload" \
-    --add-data "assets:assets" wizard.py
+    --add-data "assets:assets" --add-data "locales:locales" wizard.py
 ```
 
 ## Develop
@@ -221,6 +221,10 @@ shellcheck payload/firstboot.sh fetch-dmrdash.sh
 - `assets/dmrdash.webp` is the dashboard preview on the Dashboard step: dmrdash 1.4.0 (unchanged in 1.5.0) with a staged scene
   (CT7BLE on RF on TS1, VK2ABCD on TS2), at 1280×530 CSS px and 2× (2560×1060). Update it, and the step's
   feature list, when the bundled dmrdash changes.
+- `locales/<code>.json` translates the browser wizard: each English text, as written in `ui.html` (`t()`, `tx()`) or
+  `hotspot.py` (`t()`, `SECTIONS`), mapped to its translation. Text a catalog lacks shows in English, and
+  `tests/test_i18n.py` fails until every catalog covers every text. After changing or adding English text,
+  `python3 tests/test_i18n.py --missing pt-PT` lists what that catalog needs. The command line stays English.
 - `payload/` is what goes onto the card. `MMDVM.ini.in` started as a working CT7BLE hotspot's config.
 - `tests/fixtures/bootfs` holds the boot files of the stock 2026-10-06 trixie Lite image.
 
@@ -239,3 +243,5 @@ MIT. See [LICENSE](LICENSE).
 
 The wizard's Linux, Windows and Apple logos are [Font Awesome Free](https://fontawesome.com/license/free) brand icons
 (CC BY 4.0, Copyright 2024 Fonticons, Inc.).
+The language menu's flags are from [circle-flags](https://github.com/HatScripts/circle-flags) 2.7.0
+(MIT, Copyright 2023 HatScripts; see [assets/flags/LICENSE.md](assets/flags/LICENSE.md)).

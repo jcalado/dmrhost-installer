@@ -16,6 +16,7 @@ import secrets
 import ssl
 import string
 import sys
+import threading
 import urllib.parse
 import urllib.request
 from email.utils import parsedate_to_datetime
@@ -49,6 +50,61 @@ def resource_dir() -> Path:
 
 
 PAYLOAD = resource_dir() / "payload"
+
+
+# --- languages ------------------------------------------------------------------
+# The browser wizard speaks these. locales/<code>.json maps each English text to its
+# translation, and text a catalog lacks stays English. Each request sets its language
+# for its own thread; the command line stays English.
+
+LANGS = {"en": "English", "pt-PT": "Português", "es-ES": "Español", "fr-FR": "Français",
+         "de-DE": "Deutsch", "it-IT": "Italiano"}
+LOCALES = resource_dir() / "locales"
+_catalogs: dict[str, dict] = {}
+_lang = threading.local()
+
+
+def catalog(code: str) -> dict:
+    if code not in _catalogs:
+        try:
+            _catalogs[code] = json.loads((LOCALES / f"{code}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _catalogs[code] = {}
+    return _catalogs[code]
+
+
+def pick_lang(wanted: str) -> str:
+    """The first language we speak from a list like an Accept-Language header ("pt-BR,pt;q=0.9")."""
+    for tag in (wanted or "").split(","):
+        tag = tag.split(";")[0].strip().lower()
+        for code in LANGS:
+            if tag == code.lower() or tag.split("-")[0] == code.split("-")[0].lower():
+                return code
+    return "en"
+
+
+def set_lang(code: str) -> None:
+    _lang.code = code if code in LANGS else "en"
+
+
+def lang() -> str:
+    return getattr(_lang, "code", "en")
+
+
+def t(text: str, **args) -> str:
+    """text in this thread's language, with {name} filled in from args."""
+    text = catalog(lang()).get(text) or text
+    return text.format(**args) if args else text
+
+
+def sections() -> list:
+    """SECTIONS in this thread's language."""
+    def tr(d):
+        out = {k: t(v) if k in ("title", "label", "help", "warn", "find", "find_link_text") else v for k, v in d.items()}
+        if "choices" in d:
+            out["choices"] = [[val, t(name), t(desc) if desc else ""] for val, name, desc in d["choices"]]
+        return out
+    return [{**tr(s), "fields": [tr(f) for f in s["fields"]]} for s in SECTIONS]
 
 
 # --- questions ----------------------------------------------------------------
@@ -181,6 +237,20 @@ def clear_progress() -> None:
         progress_path().unlink()
     except OSError:
         pass
+
+
+def load_prefs() -> dict:
+    try:
+        prefs = json.loads(progress_path().with_name("prefs.json").read_text(encoding="utf-8"))
+        return prefs if isinstance(prefs, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_prefs(**prefs) -> None:
+    path = progress_path().with_name("prefs.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({**load_prefs(), **prefs}), encoding="utf-8")
 
 
 def defaults() -> dict:
@@ -340,11 +410,11 @@ def read_backup(data: bytes, masters: list | None = None) -> dict:
     import io
     import zipfile
     if len(data) > BACKUP_MAX:
-        raise ValueError("That file is too big to be a WPSD or Pi-Star backup.")
+        raise ValueError(t("That file is too big to be a WPSD or Pi-Star backup."))
     try:
         z = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile:
-        raise ValueError("That isn't a zip file. In WPSD or Pi-Star, use Configuration → Backup/Restore → Download.")
+        raise ValueError(t("That isn't a zip file. In WPSD or Pi-Star, use Configuration → Backup/Restore → Download."))
     files, nm = {}, []
     with z:
         for info in z.infolist():
@@ -362,7 +432,7 @@ def read_backup(data: bytes, masters: list | None = None) -> dict:
                 else:
                     files.setdefault(name, text)
     if "mmdvmhost" not in files:
-        raise ValueError("No mmdvmhost settings in that zip. Is it a WPSD or Pi-Star configuration backup?")
+        raise ValueError(t("No mmdvmhost settings in that zip. Is it a WPSD or Pi-Star configuration backup?"))
 
     a, notes = {}, []
     mm = _ini(files["mmdvmhost"])
@@ -378,8 +448,8 @@ def read_backup(data: bytes, masters: list | None = None) -> dict:
         elif len(hid) == 8:
             a["id_suffix"] = "0" + hid[7]
         else:
-            notes.append(f"The old hotspot used your plain DMR ID, {hid}. This one adds the ESSID: "
-                         f"{hid}{FIELDS['id_suffix']['default']} unless you change it.")
+            notes.append(t("The old hotspot used your plain DMR ID, {old}. This one adds the ESSID: "
+                           "{new} unless you change it.", old=hid, new=hid + FIELDS["id_suffix"]["default"]))
     duplex = gen.get("duplex", "1") != "0"
     a["hat"] = "duplex" if duplex else "simplex"
     rx, tx = _hz_to_mhz(info.get("rxfrequency", "")), _hz_to_mhz(info.get("txfrequency", ""))
@@ -400,7 +470,8 @@ def read_backup(data: bytes, masters: list | None = None) -> dict:
     elif display:
         a["oled"] = "none"
         if display not in ("none", ""):
-            notes.append(f"The old hotspot drove a {gen['display']} display; this installer supports OLEDs only.")
+            notes.append(t("The old hotspot drove a {display} display; this installer supports OLEDs only.",
+                             display=gen["display"]))
 
     # BrandMeister: straight from MMDVMHost, or through DMRGateway (127.0.0.1)
     net = mm.get("dmr network", {})
@@ -429,7 +500,7 @@ def read_backup(data: bytes, masters: list | None = None) -> dict:
         elif re.fullmatch(r"[A-Za-z0-9.-]+", address):
             a["master"] = address + (f":{port}" if port.isdigit() and int(port) != MASTER_PORT else "")
     if "bm_password" not in a:
-        notes.append("No hotspot security password in the backup: type it on the Station step.")
+        notes.append(t("No hotspot security password in the backup: type it on the Station step."))
 
     host = files.get("hostname", "").strip().lower()
     if re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?", host):
@@ -451,12 +522,12 @@ def read_backup(data: bytes, masters: list | None = None) -> dict:
         if country:
             a["wifi_country"] = country
         if len(nets) > 1:
-            notes.append(f"The backup has {len(nets)} Wi-Fi networks; this sets up {nets[0]['ssid']} only.")
+            notes.append(t("The backup has {n} Wi-Fi networks; this sets up {ssid} only.", n=len(nets), ssid=nets[0]["ssid"]))
 
     key = re.search(r"(?m)^\s*apikey\s*=\s*(\S+)", files.get("bmapi.key", ""))
     if key and key[1].lower() != "none":
         a["api_key"] = key[1]
-    notes.append("A backup has no logins for this installer: choose your username, SSH key or password on the Pi step.")
+    notes.append(t("A backup has no logins for this installer: choose your username, SSH key or password on the Pi step."))
     return {"answers": a, "notes": notes}
 
 
@@ -487,66 +558,66 @@ def validate(raw: dict, masters: list | None = None) -> tuple[dict, dict]:
         if not visible(f, a):
             continue
         if f.get("required") and v == "":
-            err[k] = "Required."
+            err[k] = t("Required.")
         elif isinstance(v, str) and k not in ("ssh_key",) and re.search(r"[\x00-\x1f\x7f]", v):
-            err[k] = "No line breaks or control characters."
+            err[k] = t("No line breaks or control characters.")
 
     def check(key, ok, msg):
         if key not in err and a[key] != "" and not ok:
             err[key] = msg
 
-    check("callsign", re.fullmatch(r"[A-Z0-9]{3,8}", a["callsign"]), "Letters and digits only.")
-    check("dmr_id", re.fullmatch(r"[1-9][0-9]{6}", a["dmr_id"]), "Seven digits.")
+    check("callsign", re.fullmatch(r"[A-Z0-9]{3,8}", a["callsign"]), t("Letters and digits only."))
+    check("dmr_id", re.fullmatch(r"[1-9][0-9]{6}", a["dmr_id"]), t("Seven digits."))
     check("id_suffix", re.fullmatch(r"[0-9]{2}", a["id_suffix"]) and a["id_suffix"] != "00",
-          "Two digits, 01 to 99.")
+          t("Two digits, 01 to 99."))
     if a["master"] and "master" not in err:
         m = resolve_master(a["master"], masters if masters is not None else fetch_masters())
         if m:
             a["master_address"], a["master_port"] = m
         else:
-            err["master"] = "Pick a master from the list, or type an address."
-    check("url", re.fullmatch(r"https?://\S+", a["url"]), "Starts with http:// or https://.")
+            err["master"] = t("Pick a master from the list, or type an address.")
+    check("url", re.fullmatch(r"https?://\S+", a["url"]), t("Starts with http:// or https://."))
     for k in ("rx_freq", "tx_freq"):
         if visible(FIELDS[k], a):
-            check(k, _mhz(a[k]), "A frequency in MHz, like 432.000.")
+            check(k, _mhz(a[k]), t("A frequency in MHz, like 432.000."))
     if a["hat"] == "duplex" and "rx_freq" not in err and "tx_freq" not in err and a["rx_freq"] and \
             _mhz(a["rx_freq"]) == _mhz(a["tx_freq"]):
-        err["tx_freq"] = "A duplex hat needs two different frequencies."
-    check("rx_offset", re.fullmatch(r"[+-]?[0-9]{1,5}", a["rx_offset"]), "Whole hertz, like -350.")
-    check("color_code", a["color_code"].isdigit() and 0 <= int(a["color_code"]) <= 15, "0 to 15.")
+        err["tx_freq"] = t("A duplex hat needs two different frequencies.")
+    check("rx_offset", re.fullmatch(r"[+-]?[0-9]{1,5}", a["rx_offset"]), t("Whole hertz, like -350."))
+    check("color_code", a["color_code"].isdigit() and 0 <= int(a["color_code"]) <= 15, t("0 to 15."))
     if "hat" not in err and a["hat"] not in ("duplex", "simplex"):
-        err["hat"] = "Duplex or simplex."
+        err["hat"] = t("Duplex or simplex.")
     if a["oled"] not in ("ssd1306", "sh1106", "none"):
-        err["oled"] = "Pick a display."
+        err["oled"] = t("Pick a display.")
     check("hostname", re.fullmatch(r"[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?", a["hostname"]),
-          "Lower-case letters, digits and hyphens.")
+          t("Lower-case letters, digits and hyphens."))
     a["hostname"] = a["hostname"] or "dmrhost"
     check("username", re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", a["username"]) and a["username"] != "root",
-          "Lower-case letters, digits, _ and -, and not root.")
+          t("Lower-case letters, digits, _ and -, and not root."))
     keys = [ln.strip() for ln in a["ssh_key"].splitlines() if ln.strip() and not ln.startswith("#")]
     bad = [ln for ln in keys if not re.fullmatch(r"(ssh-|ecdsa-|sk-)\S+ [A-Za-z0-9+/=]+( .*)?", ln)]
     if bad:
-        err["ssh_key"] = "That doesn't look like a public key (ssh-ed25519 AAAA...)."
+        err["ssh_key"] = t("That doesn't look like a public key (ssh-ed25519 AAAA...).")
     a["ssh_keys"] = keys
     if not keys and not a["password"] and "ssh_key" not in err:
-        err["password"] = "Give an SSH key or a password, or you can't log in."
-    check("password", len(a["password"]) >= 8, "At least 8 characters.")
+        err["password"] = t("Give an SSH key or a password, or you can't log in.")
+    check("password", len(a["password"]) >= 8, t("At least 8 characters."))
     check("timezone", re.fullmatch(r"UTC|[A-Za-z_]+(/[A-Za-z0-9_+-]+){1,2}", a["timezone"]),
-          "Like Europe/Lisbon.")
+          t("Like Europe/Lisbon."))
     if a["wifi_ssid"]:
-        check("wifi_ssid", len(a["wifi_ssid"].encode()) <= 32, "At most 32 bytes.")
+        check("wifi_ssid", len(a["wifi_ssid"].encode()) <= 32, t("At most 32 bytes."))
         # 64 hex digits is the hashed key wpa_passphrase writes, as Pi-Star and WPSD store it
         check("wifi_password", 8 <= len(a["wifi_password"]) <= 63 or re.fullmatch(r"[0-9a-fA-F]{64}", a["wifi_password"]),
-              "8 to 63 characters, or blank for an open network.")
+              t("8 to 63 characters, or blank for an open network."))
         if not a["wifi_country"]:
-            err["wifi_country"] = "Required with Wi-Fi."
-        check("wifi_country", re.fullmatch(r"[A-Z]{2}", a["wifi_country"]), "Two letters, like PT.")
+            err["wifi_country"] = t("Required with Wi-Fi.")
+        check("wifi_country", re.fullmatch(r"[A-Z]{2}", a["wifi_country"]), t("Two letters, like PT."))
     if a["dashboard"]:
-        check("port", a["port"].isdigit() and 1 <= int(a["port"]) <= 65535, "1 to 65535.")
-        check("pin", re.fullmatch(r"\S{4,}", a["pin"]), "At least 4 characters, no spaces.")
+        check("port", a["port"].isdigit() and 1 <= int(a["port"]) <= 65535, t("1 to 65535."))
+        check("pin", re.fullmatch(r"\S{4,}", a["pin"]), t("At least 4 characters, no spaces."))
         # the console signs in through the Pi's sshd, which a key-only login set up refuses passwords on
         if a["shell"] and not a["password"]:
-            err["shell"] = "Needs a login password on the Pi step: with only an SSH key, the Pi refuses password logins."
+            err["shell"] = t("Needs a login password on the Pi step: with only an SSH key, the Pi refuses password logins.")
     return a, err
 
 
@@ -669,19 +740,19 @@ def check_boot(path) -> tuple[bool, str]:
     """Is this the boot partition of a freshly flashed 64-bit Pi OS trixie card?"""
     p = Path(path)
     if not (p / "config.txt").is_file() or not (p / "cmdline.txt").is_file():
-        return False, "Not a Raspberry Pi boot partition (no config.txt and cmdline.txt)."
+        return False, t("Not a Raspberry Pi boot partition (no config.txt and cmdline.txt).")
     issue = (p / "issue.txt").read_text(errors="replace") if (p / "issue.txt").is_file() else ""
     if "Raspberry Pi" not in issue:
-        return False, "Not Raspberry Pi OS (issue.txt doesn't say so)."
+        return False, t("Not Raspberry Pi OS (issue.txt doesn't say so).")
     if not (p / "meta-data").is_file():
-        return False, "This Pi OS is older than trixie; flash Raspberry Pi OS Lite (64-bit) from 2025-10 or later."
+        return False, t("This Pi OS is older than trixie; flash Raspberry Pi OS Lite (64-bit) from 2025-10 or later.")
     if (p / "kernel7l.img").is_file() or (p / "kernel.img").is_file():
-        return False, "This is the 32-bit Pi OS; DMRHost needs Raspberry Pi OS Lite (64-bit)."
+        return False, t("This is the 32-bit Pi OS; DMRHost needs Raspberry Pi OS Lite (64-bit).")
     if "resize" not in (p / "cmdline.txt").read_text(errors="replace").split():
-        return False, "This card has already booted. Flash it again with a fresh image first."
+        return False, t("This card has already booted. Flash it again with a fresh image first.")
     if (p / "dmrhost-setup").exists():
-        return True, "Ready (already set up by this installer; writing again replaces it)."
-    return True, "Ready: fresh Raspberry Pi OS Lite (64-bit)."
+        return True, t("Ready (already set up by this installer; writing again replaces it).")
+    return True, t("Ready: fresh Raspberry Pi OS Lite (64-bit).")
 
 
 def _mount_points() -> list[Path]:
@@ -774,32 +845,33 @@ def summary(a: dict) -> dict:
     duplex = a["hat"] == "duplex"
     rx = _mhz(a["rx_freq"]) / 1e6
     tx = (_mhz(a["tx_freq"]) if duplex else _mhz(a["rx_freq"])) / 1e6
-    login = " and ".join(x for x in ("SSH key" if a["ssh_keys"] else "", "password" if a["password"] else "") if x)
+    login = t("SSH key and password") if a["ssh_keys"] and a["password"] else t("SSH key") if a["ssh_keys"] else t("password")
     groups = [
-        {"section": "station", "title": "Station", "rows": [
-            ["Hotspot", f"{a['callsign']}, ID {hotspot_id(a)}"],
+        {"section": "station", "title": t("Station"), "rows": [
+            [t("Hotspot"), t("{callsign}, ID {id}", callsign=a["callsign"], id=hotspot_id(a))],
             ["BrandMeister", f"{a['master_address']}:{a['master_port']}"],
         ]},
-        {"section": "radio", "title": "Radio", "rows": [
-            ["Hat", "Duplex" if duplex else "Simplex"],
-            ["Hotspot frequencies", f"RX {rx:.4f} / TX {tx:.4f} MHz" if duplex else f"{rx:.4f} MHz simplex"],
-            ["RX offset", f"{int(a['rx_offset'])} Hz"],
-            ["Display", {"ssd1306": '0.96" OLED', "sh1106": '1.3" OLED', "none": "none"}[a["oled"]]],
+        {"section": "radio", "title": t("Radio"), "rows": [
+            [t("Hat"), t("Duplex") if duplex else t("Simplex")],
+            [t("Hotspot frequencies"), f"RX {rx:.4f} / TX {tx:.4f} MHz" if duplex else t("{mhz} MHz simplex", mhz=f"{rx:.4f}")],
+            [t("RX offset"), f"{int(a['rx_offset'])} Hz"],
+            [t("Display"), {"ssd1306": t('0.96" OLED'), "sh1106": t('1.3" OLED'), "none": t("No display")}[a["oled"]]],
         ]},
-        {"section": "pi", "title": "Pi", "rows": [
-            ["Login", f"{a['username']}@{a['hostname']}.local, {login}"],
-            ["Network", f"Wi-Fi {a['wifi_ssid']} ({a['wifi_country']})" if a["wifi_ssid"] else "Ethernet"],
-            ["Time zone", a["timezone"]],
+        {"section": "pi", "title": t("Pi"), "rows": [
+            [t("Login"), f"{a['username']}@{a['hostname']}.local, {login}"],
+            [t("Network"), t("Wi-Fi {ssid} ({country})", ssid=a["wifi_ssid"], country=a["wifi_country"])
+             if a["wifi_ssid"] else "Ethernet"],
+            [t("Time zone"), a["timezone"]],
         ]},
     ]
     if a["dashboard"]:
         src = find_dmrdash_deb()
-        dash = [["Address", f"http://{a['hostname']}.local:{a['port']}"],
-                ["Package", f"{src.name}, on the card" if src else "downloaded on first boot"],
-                ["Talkgroup changes", "on (API key given)" if a["api_key"] else "off until you add an API key"]]
+        dash = [[t("Address"), f"http://{a['hostname']}.local:{a['port']}"],
+                [t("Package"), t("{file}, on the card", file=src.name) if src else t("downloaded on first boot")],
+                [t("Talkgroup changes"), t("on (API key given)") if a["api_key"] else t("off until you add an API key")]]
     else:
-        dash = [["Dashboard", "not installed"]]
-    groups.append({"section": "dashboard", "title": "Dashboard", "rows": dash})
+        dash = [[t("Dashboard"), t("not installed")]]
+    groups.append({"section": "dashboard", "title": t("Dashboard"), "rows": dash})
     radio = {"tx": f"{rx:.4f}", "rx": f"{tx:.4f}", "cc": str(int(a["color_code"])),
              "slots": "TS1 + TS2" if duplex else "TS2"}
     return {"groups": groups, "radio": radio}

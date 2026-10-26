@@ -52,7 +52,7 @@ jobs:
         run: |
           # --add-data takes src:dest on every OS since PyInstaller 6
           pyinstaller --onefile --name dmrhost-installer \
-            --add-data "ui.html:." --add-data "payload:payload" --add-data "assets:assets" \
+            --add-data "ui.html:." --add-data "payload:payload" --add-data "assets:assets" --add-data "locales:locales" \
             wizard.py
           mkdir out
           mv dist/dmrhost-installer* "out/${{ matrix.name }}"
