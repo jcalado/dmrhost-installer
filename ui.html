@@ -99,7 +99,12 @@ input:focus, textarea:focus, select:focus, button:focus-visible, .opt:focus-with
 .opt:hover:not(.sel) { border-color: var(--legend-dim); }
 .opt.sel { border-color: var(--rx); background: var(--panel-3); }
 .opt.picked { animation: picked .22s var(--ease-out); }
-@keyframes picked { from { border-color: var(--rule-2); background: var(--panel); } }
+@keyframes picked { from { border-color: var(--rule-2); background: var(--panel); transform: scale(.985); } }
+/* fields a choice shows or hides slide in and fade out */
+.field.enter { animation: field-in .24s var(--ease-out); }
+.field.leave { animation: field-out .16s ease-in forwards; }
+@keyframes field-in { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes field-out { to { opacity: 0; transform: translateY(-4px); } }
 /* radioid.net suggestions under DMR ID / ESSID */
 .ids:empty { display: none; }
 .ids { margin: calc(-1 * var(--s2)) 0 var(--s5); }
@@ -140,6 +145,9 @@ input.upper::placeholder { text-transform: none; }
 .lcd { background: var(--lcd); color: var(--lcd-ink); border-radius: 4px; padding: var(--s3) var(--s4); margin: calc(-1 * var(--s2)) 0 var(--s5);
   font: 600 15px var(--mono); display: flex; gap: var(--s2) var(--s5); flex-wrap: wrap; }
 .lcd small { color: var(--lcd-dim); font-weight: 600; font-size: 11px; display: block; letter-spacing: .08em; }
+/* a reading the hat changed blinks back in, like a segment refresh */
+.lcd .tick { animation: tick .3s steps(3, end); }
+@keyframes tick { from { opacity: .15; } }
 
 nav.btns { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); margin-top: var(--s6);
   padding-top: var(--s5); border-top: 1px solid var(--rule); }
@@ -177,6 +185,7 @@ button.busy::after { content: ""; position: absolute; left: 0; bottom: 0; width:
   .ready path { animation: none; stroke-dashoffset: 0; }
   .radar { animation: pulse 1.2s ease-in-out infinite alternate; box-shadow: none; }
   .flash .opt.picked svg { animation: none; }
+  .opt.picked, .field.enter, .lcd .tick { animation: fade .15s ease-out; }
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes pulse { from { opacity: .2; } to { opacity: .7; } }
@@ -375,7 +384,7 @@ function fieldEl(f) {
       f.choices.map(([val, name, desc]) => h("label", {
           class: "opt" + (v === val ? " sel" : "") + (v === val && S.picked === f.key ? " picked" : "") },
         h("input", { type: "radio", name: f.key, value: val, checked: v === val,
-          onchange: () => { set(val); S.picked = f.key; render(); } }),
+          onchange: e => pick(f, val, set, e.target) }),
         h("b", {}, name), desc ? h("span", {}, desc) : null)));
   } else if (f.kind === "bool") {
     return h("div", { class: "field" + (err ? " bad" : ""), "data-key": f.key },
@@ -400,7 +409,7 @@ function fieldEl(f) {
         else if (f.kind === "freq") refreshLive();
         if (f.key === "callsign") lookupIds(); } });
   }
-  return h("div", { class: "field" + (err ? " bad" : ""), "data-key": f.key },
+  return h("div", { class: "field" + (err ? " bad" : "") + (S.entering?.has(f.key) ? " enter" : ""), "data-key": f.key },
     h("label", { class: "l", for: f.kind === "choice" ? null : id, id: id + "-l" }, f.label),
     input,
     err ? h("div", { class: S.freshErrors ? "err new" : "err" }, err) : null,
@@ -408,6 +417,21 @@ function fieldEl(f) {
       h("div", {}, f.warn, f.link ? [" ", ext(f.link, f.link.replace(/^https:\/\//, ""))] : null)) : null,
     f.help ? h("div", { class: "help" }, f.help) : null,
     f.find ? findEl(f) : null);
+}
+
+// a choice that hides fields lets them fade out before they leave the layout
+function pick(f, val, set, input) {
+  const deps = S.sections.flatMap(s => s.fields).filter(g => g.when && g.when[0] === f.key);
+  const before = new Set(deps.filter(visible).map(g => g.key));
+  set(val); S.picked = f.key;
+  const after = new Set(deps.filter(visible).map(g => g.key));
+  S.entering = new Set([...after].filter(k => !before.has(k)));
+  const leaving = [...before].filter(k => !after.has(k))
+    .map(k => document.querySelector(`.field[data-key="${k}"]`)).filter(Boolean);
+  if (!leaving.length || matchMedia("(prefers-reduced-motion: reduce)").matches) return render();
+  input.closest(".choices").querySelectorAll(".opt").forEach(o => o.classList.toggle("sel", o.contains(input)));
+  leaving.forEach(el => el.classList.add("leave"));
+  leaving[0].addEventListener("animationend", render, { once: true });
 }
 
 // "Where to find it", with a deep link built from the callsign when there is one
@@ -540,15 +564,15 @@ function preselectMaster() {
 }
 
 function mhz(s) { const n = parseFloat(String(s || "").replace(",", ".")); return isFinite(n) ? n : null; }
-function refreshLive() {
+function refreshLive(tick) {
   const el = $("#live"); if (!el) return;
   const rx = mhz(S.answers.rx_freq), duplex = S.answers.hat === "duplex";
   const tx = duplex ? mhz(S.answers.tx_freq) : rx;
   const f = n => n == null ? "—" : n.toFixed(4);
-  el.replaceChildren(
-    h("div", {}, h("small", {}, "YOUR RADIO TX"), f(rx)),
-    h("div", {}, h("small", {}, "YOUR RADIO RX"), f(tx)),
-    h("div", {}, h("small", {}, "SLOTS"), duplex ? "TS1 + TS2" : "TS2"));
+  const vals = [f(rx), f(tx), duplex ? "TS1 + TS2" : "TS2"], last = S.live || [];
+  S.live = vals;
+  el.replaceChildren(...["YOUR RADIO TX", "YOUR RADIO RX", "SLOTS"].map((name, i) => h("div", {}, h("small", {}, name),
+    tick && vals[i] !== last[i] ? h("span", { class: "tick" }, vals[i]) : vals[i])));
 }
 
 const LINKS = {
@@ -1011,10 +1035,11 @@ function render() {
   const dir = S.shown === undefined || S.shown === S.step ? "" : S.step > S.shown ? " fwd" : " back";
   S.shown = S.step;
   $("#main").replaceChildren(h("div", { class: "view" + dir }, kids));
-  S.picked = null; S.freshErrors = false;
+  const picked = S.picked;
+  S.picked = null; S.entering = null; S.freshErrors = false;
   saveSoon();
   watchVolumes(S.step === n + 1);
-  refreshLive();
+  refreshLive(picked === "hat");
   const el = focused && document.getElementById(focused);
   if (el) {
     el.focus();

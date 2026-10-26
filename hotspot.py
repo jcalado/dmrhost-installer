@@ -75,8 +75,8 @@ SECTIONS = [
     ]},
     {"id": "radio", "title": "Radio", "fields": [
         {"key": "hat", "label": "Hat", "kind": "choice", "default": "duplex", "choices": [
-            ["duplex", "MMDVM_HS duplex", "Two frequencies, both timeslots"],
-            ["simplex", "MMDVM_HS simplex", "One frequency, timeslot 2 only"]]},
+            ["duplex", "Duplex", "Two frequencies, both timeslots"],
+            ["simplex", "Simplex", "One frequency, timeslot 2 only"]]},
         {"key": "rx_freq", "label": "Hotspot receives on (MHz)", "kind": "freq", "required": True,
          "placeholder": "432.000", "help": "Your radio transmits on this one."},
         {"key": "tx_freq", "label": "Hotspot transmits on (MHz)", "kind": "freq", "required": True,
@@ -781,7 +781,7 @@ def summary(a: dict) -> dict:
             ["BrandMeister", f"{a['master_address']}:{a['master_port']}"],
         ]},
         {"section": "radio", "title": "Radio", "rows": [
-            ["Hat", "MMDVM_HS duplex" if duplex else "MMDVM_HS simplex"],
+            ["Hat", "Duplex" if duplex else "Simplex"],
             ["Hotspot frequencies", f"RX {rx:.4f} / TX {tx:.4f} MHz" if duplex else f"{rx:.4f} MHz simplex"],
             ["RX offset", f"{int(a['rx_offset'])} Hz"],
             ["Display", {"ssd1306": '0.96" OLED', "sh1106": '1.3" OLED', "none": "none"}[a["oled"]]],
