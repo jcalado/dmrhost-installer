@@ -9,9 +9,18 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      # one failing job shouldn't hide how the others do
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.9", "3.13"]
+        # ubuntu-latest (26.04) has no Python 3.9 builds; 22.04 does, and the release builds there
+        exclude:
+          - os: ubuntu-latest
+            python: "3.9"
+        include:
+          - os: ubuntu-22.04
+            python: "3.9"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
