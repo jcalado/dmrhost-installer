@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="fr-FR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hotspot DMR pour BrandMeister · Installateur DMRHost</title>
+<meta name="description" content="Installez un hotspot DMR BrandMeister sur Raspberry Pi sans Linux, ou quittez WPSD ou Pi-Star. Un assistant prépare la carte SD, le Pi fait le reste.">
+<link rel="canonical" href="https://jcalado.com/dmrhost-installer/fr/">
+<link rel="alternate" hreflang="en" href="https://jcalado.com/dmrhost-installer/">
+<link rel="alternate" hreflang="de-DE" href="https://jcalado.com/dmrhost-installer/de/">
+<link rel="alternate" hreflang="pt-PT" href="https://jcalado.com/dmrhost-installer/pt/">
+<link rel="alternate" hreflang="fr-FR" href="https://jcalado.com/dmrhost-installer/fr/">
+<link rel="alternate" hreflang="es-ES" href="https://jcalado.com/dmrhost-installer/es/">
+<link rel="alternate" hreflang="it-IT" href="https://jcalado.com/dmrhost-installer/it/">
+<link rel="alternate" hreflang="x-default" href="https://jcalado.com/dmrhost-installer/">
+<meta name="theme-color" content="#1d2023">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Installateur de hotspot DMRHost">
+<meta property="og:title" content="Hotspot DMR pour BrandMeister · Installateur DMRHost">
+<meta property="og:description" content="Installez un hotspot DMR BrandMeister sur Raspberry Pi sans Linux, ou quittez WPSD ou Pi-Star. Un assistant prépare la carte SD, le Pi fait le reste.">
+<meta property="og:url" content="https://jcalado.com/dmrhost-installer/fr/">
+<meta property="og:image" content="https://jcalado.com/dmrhost-installer/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Un tableau de bord montrant une radio en émission sur le talkgroup 91.">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:locale:alternate" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Installateur de hotspot DMRHost",
+  "description": "Transforme un Raspberry Pi équipé d’un hat MMDVM_HS en hotspot DMR BrandMeister, avec BrandMeister DMRHost et le tableau de bord dmrdash. Vous configurez tout sur votre ordinateur ; le Pi s’installe tout seul au premier démarrage.",
+  "url": "https://jcalado.com/dmrhost-installer/fr/",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Windows, macOS, Linux",
+  "downloadUrl": "https://github.com/jcalado/dmrhost-installer/releases/latest",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "screenshot": "https://jcalado.com/dmrhost-installer/assets/dmrdash-desktop.webp",
+  "sameAs": "https://github.com/jcalado/dmrhost-installer",
+  "author": { "@type": "Person", "name": "CT7BLE", "url": "https://github.com/jcalado" }
+}
+</script>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wght@700;800&display=swap">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+
+<header class="wrap nav">
+  <a class="nav-brand" href="./">Installateur de hotspot DMRHost</a>
+  <nav class="nav-links" aria-label="Principal">
+    <a class="hide-sm" href="#how">Comment ça marche</a>
+    <a class="hide-sm" href="#tour">Tableau de bord</a>
+    <a class="hide-sm" href="#need">Ce qu’il vous faut</a>
+    <a class="hide-sm" href="#from-wpsd">Depuis WPSD</a>
+    <details class="lang">
+      <summary aria-label="Langue : Français"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c-2 2-2.8 4.2-2.8 6.5s.8 4.5 2.8 6.5M8 1.5c2 2 2.8 4.2 2.8 6.5s-.8 4.5-2.8 6.5"/></svg>FR</summary>
+      <ul>
+        <li><a href="../" hreflang="en" lang="en">English</a></li>
+        <li><a href="../de/" hreflang="de-DE" lang="de-DE">Deutsch</a></li>
+        <li><a href="../es/" hreflang="es-ES" lang="es-ES">Español</a></li>
+        <li><a href="../fr/" hreflang="fr-FR" lang="fr-FR" aria-current="page">Français</a></li>
+        <li><a href="../it/" hreflang="it-IT" lang="it-IT">Italiano</a></li>
+        <li><a href="../pt/" hreflang="pt-PT" lang="pt-PT">Português</a></li>
+      </ul>
+    </details>
+    <a class="btn btn-go" href="#download">Télécharger</a>
+  </nav>
+</header>
+
+<main id="main">
+
+  <!-- Hero: for everyone, with a signpost for each audience -->
+  <section class="wrap hero">
+    <div class="hero-copy">
+      <span class="tag">RASPBERRY PI + MMDVM_HS · BRANDMEISTER</span>
+      <h1>Un hotspot DMR qu’on installe et qu’on oublie.</h1>
+      <p class="lede">Remplissez un assistant sur votre ordinateur, branchez le Pi, et il se configure tout seul avec DMRHost de BrandMeister et un tableau de bord. Pas de Linux, pas de fichiers de configuration.</p>
+      <div class="actions">
+        <a class="btn btn-go btn-lg" href="#download">Télécharger l’installateur</a>
+        <a class="text-link" href="#need">Vérifiez d’abord ce qu’il vous faut</a>
+      </div>
+      <ul class="ticks">
+        <li><span class="led" aria-hidden="true"></span>Gratuit et open source</li>
+        <li><span class="led" aria-hidden="true"></span>Windows, macOS, Linux</li>
+        <li><span class="led" aria-hidden="true"></span>Sur l’air 5 à 15 minutes après la mise sous tension</li>
+      </ul>
+    </div>
+    <div class="hero-vfo">
+      <figure class="module vfo" style="margin:0">
+        <div class="vfo-head">
+          <span class="slot-tag">B</span>
+          <span class="label">Timeslot 2</span>
+          <span class="vfo-state"><span class="led led-tx" aria-hidden="true"></span>TX</span>
+        </div>
+        <div class="vfo-lcd">
+          <div class="vfo-top">
+            <span class="vfo-call">N0CALL</span>
+            <span class="vfo-timer">0:12<span class="src">RF</span></span>
+          </div>
+          <div class="vfo-tg"><b>91</b><span>Monde</span></div>
+          <figcaption class="vfo-meta">Votre première émission, telle que l’affiche le tableau de bord</figcaption>
+        </div>
+      </figure>
+    </div>
+    <nav class="paths" aria-label="Par où commencer">
+      <a href="#basics"><b>Nouveau en DMR ?</b><span>Ce qu’est un hotspot, et les cinq mots que vous allez croiser</span><i aria-hidden="true">↓</i></a>
+      <a href="#from-wpsd"><b>Vous venez de WPSD ou de Pi-Star ?</b><span>Ce qui change, et quand ne rien changer</span><i aria-hidden="true">↓</i></a>
+    </nav>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Comment ça marche</span>
+        <h2>Trois étapes, le temps d’un café.</h2>
+      </div>
+      <ol class="steps">
+        <li class="module step">
+          <span class="step-n" aria-hidden="true">1</span>
+          <div class="step-body">
+            <h3>Formatez la carte et écrivez Raspberry Pi OS</h3>
+            <p>Insérez une carte SD dans votre ordinateur et ouvrez <a href="https://www.raspberrypi.com/software/">Raspberry Pi Imager</a>, qui est gratuit. Choisissez <em>Raspberry Pi OS Lite (64-bit)</em>, puis cliquez sur <em>Skip customisation</em> : ne définissez ni nom, ni utilisateur, ni Wi-Fi à cet endroit, car l’assistant s’en charge. Imager formate la carte pendant l’écriture.</p>
+          </div>
+        </li>
+        <li class="module step">
+          <span class="step-n" aria-hidden="true">2</span>
+          <div class="step-body">
+            <h3>Lancez l’assistant sur le même ordinateur</h3>
+            <p>Quand Imager a terminé, ouvrez l’assistant en laissant la carte dans votre ordinateur. Si Imager l’a éjectée, retirez-la et remettez-la. Indiquez votre indicatif, votre Wi-Fi, votre hat et vos fréquences, et l’assistant configure DMRHost sur la carte. Installer le tableau de bord dmrdash, c’est vous qui choisissez.</p>
+          </div>
+        </li>
+        <li class="module step">
+          <span class="step-n" aria-hidden="true">3</span>
+          <div class="step-body">
+            <h3>Branchez le Pi et allez vous faire un café</h3>
+            <p>Le premier démarrage prend 5 à 15 minutes. Inutile de surveiller, mais voici ce qu’il fait :</p>
+            <ol class="log">
+              <li><span class="ok">OK</span><span>Installe BrandMeister DMRHost</span></li>
+              <li><span class="ok">OK</span><span>Configure votre hat, vos fréquences et l’OLED</span></li>
+              <li><span class="ok">OK</span><span>Installe le tableau de bord dmrdash, si vous l’avez choisi</span></li>
+              <li><span class="ok">OK</span><span>Efface vos mots de passe de la carte</span></li>
+              <li class="air"><span class="ok">SUR L’AIR</span><span>L’OLED s’allume. Vous êtes sur BrandMeister.</span></li>
+            </ol>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Dashboard tour -->
+  <section class="section deep" id="tour">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Visite du tableau de bord</span>
+        <h2>Voyez qui parle et changez de talkgroup depuis votre téléphone.</h2>
+        <p>Une fois le hotspot en marche, ouvrez <code>http://&lt;nom du hotspot&gt;.local:8080</code> sur n’importe quel téléphone ou ordinateur de votre réseau.</p>
+      </div>
+      <div class="tour">
+        <img src="../assets/dmrdash-desktop.webp" srcset="../assets/dmrdash-desktop-1280.webp 1280w, ../assets/dmrdash-desktop.webp 2560w" sizes="(max-width: 1040px) 100vw, 992px" width="2560" height="1800" loading="lazy" alt="Le tableau de bord dmrdash affiche le voyant d’état du hotspot, le timeslot 1 en émission, le timeslot 2 en réception et la liste des dernières stations entendues.">
+        <span class="pin" style="left:63.4%; top:3.2%" aria-hidden="true">1</span>
+        <span class="pin" style="left:26.5%; top:19.5%" aria-hidden="true">2</span>
+        <span class="pin" style="left:19.5%; top:26.6%" aria-hidden="true">3</span>
+        <span class="pin" style="left:86.5%; top:11.4%" aria-hidden="true">4</span>
+        <span class="pin" style="left:44.8%; top:36.8%" aria-hidden="true">5</span>
+        <span class="pin" style="left:16%; top:44.4%" aria-hidden="true">6</span>
+      </div>
+      <ol class="tour-key">
+        <li><span class="pin-key" aria-hidden="true">1</span><span><strong>Voyant d’état.</strong> <span class="muted">Un seul voyant pour le logiciel du hotspot, la carte radio et la liaison BrandMeister. Vert, tout va bien. Touchez-le pour voir les détails et les commandes.</span></span></li>
+        <li><span class="pin-key" aria-hidden="true">2</span><span><strong>Qui parle.</strong> <span class="muted">Le panneau passe au rouge quand vous émettez, et au crème quand c’est quelqu’un d’autre.</span></span></li>
+        <li><span class="pin-key" aria-hidden="true">3</span><span><strong>Où.</strong> <span class="muted">Le talkgroup et son nom, avec le nom de la personne qui parle en dessous.</span></span></li>
+        <li><span class="pin-key" aria-hidden="true">4</span><span><strong>Couper l’appel.</strong> <span class="muted">Coupez une conversation que vous ne voulez pas entendre sur votre hotspot.</span></span></li>
+        <li><span class="pin-key" aria-hidden="true">5</span><span><strong>Vos talkgroups.</strong> <span class="muted">Choisissez ceux que vous voulez toujours entendre, timeslot par timeslot. La clé API saisie dans l’assistant vous permet de les changer sans vous connecter à BrandMeister.</span></span></li>
+        <li><span class="pin-key" aria-hidden="true">6</span><span><strong>Dernières stations entendues.</strong> <span class="muted">Toutes les stations passées récemment sur l’air, avec des liens pour les retrouver sur QRZ.com.</span></span></li>
+      </ol>
+      <div class="tour-more">
+        <img src="../assets/dmrdash-phone.webp" width="780" height="1688" loading="lazy" alt="Le tableau de bord dmrdash affiché sur l’écran d’un téléphone mobile.">
+        <ul>
+          <li><strong>Pensé pour le téléphone</strong> : lisible à bout de bras pendant que vous tenez la radio dans l’autre main.</li>
+          <li><strong>Préréglages</strong> : enregistrez des ensembles comme « Tous les jours » ou « Soir de réseau » et passez de l’un à l’autre d’une seule touche. Seules les différences sont appliquées.</li>
+          <li><strong>Statiques programmés</strong> : faites en sorte que le talkgroup de votre réseau hebdomadaire ne s’active que pendant le réseau, en heure locale.</li>
+          <li><strong>Aide à la réception</strong> : si votre audio est haché, il propose un meilleur offset RX et le règle pendant que vous émettez, puis vous demande avant de le conserver.</li>
+          <li><strong>Alertes claires</strong> : un bandeau rouge apparaît en cas de problème, et rien ne s’affiche quand tout va bien.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- What you need -->
+  <section class="section" id="need">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Ce qu’il vous faut</span>
+        <h2>Votre liste de courses pour un hotspot</h2>
+        <p>Vous avez déjà un hotspot ? Votre Pi et votre hat MMDVM_HS fonctionnent tels quels.</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>Un Raspberry Pi</h3>
+          <p>Il vous faut un Zero 2 W, un 3 ou un 4. Le Zero 2 W est petit, bon marché et suffit pour la plupart des hotspots. Le Pi 5 n’est pas encore pris en charge.</p>
+        </div>
+        <div class="card">
+          <h3>Un hat MMDVM_HS</h3>
+          <p>Cette petite carte radio se branche sur les broches du Pi. Vous avez le choix entre simplex (une fréquence) et duplex (deux). Un écran OLED est un plus bien pratique.</p>
+        </div>
+        <div class="card">
+          <h3>Une carte SD de 8 Go ou plus</h3>
+          <p>Il vous faut aussi de quoi la brancher sur votre ordinateur.</p>
+        </div>
+        <div class="card">
+          <h3>Un compte BrandMeister</h3>
+          <p>Définissez d’abord un <strong>mot de passe de sécurité hotspot</strong> dans SelfCare. Il est différent de votre mot de passe de connexion, et l’assistant vous montre où le trouver. Il vous faudra aussi une <strong>clé API SelfCare</strong> pour gérer les talkgroups depuis votre tableau de bord.</p>
+        </div>
+        <div class="card">
+          <h3>Une radio DMR et un ID DMR</h3>
+          <p>Votre ID vient de radioid.net. Tapez simplement votre indicatif dans l’assistant et il trouve l’ID pour vous.</p>
+        </div>
+        <div class="card">
+          <h3>Votre licence radioamateur</h3>
+          <p>Un hotspot est un émetteur. Choisissez des fréquences autorisées par votre licence et par le plan de bande local.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- New to DMR -->
+  <section class="section" id="basics">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Nouveau en DMR ?</span>
+        <h2>Un petit relais personnel sur votre bureau.</h2>
+        <p>Pas de relais à portée ? Un hotspot écoute votre radio sur quelques mètres en UHF et relie votre voix à BrandMeister par internet. Les autres radioamateurs du monde entier vous entendent sur le même talkgroup.</p>
+      </div>
+      <ol class="flow">
+        <li><b>Votre radio</b><span>Un portatif ou un mobile DMR</span></li>
+        <li class="hop" aria-hidden="true">UHF</li>
+        <li class="lcd"><b>Hotspot</b><span>Raspberry Pi + hat MMDVM_HS. C’est ce que nous configurons.</span></li>
+        <li class="hop" aria-hidden="true">INTERNET</li>
+        <li><b>BrandMeister</b><span>Le réseau DMR mondial</span></li>
+        <li class="hop" aria-hidden="true">TG 91</li>
+        <li><b>Tous les autres</b><span>Sur des hotspots et des relais du monde entier</span></li>
+      </ol>
+
+      <div class="split sub">
+        <div class="head">
+          <h3 class="display sub-h">Ajoutez un canal avec les valeurs de l’assistant.</h3>
+          <p>La fréquence de réception du hotspot est la fréquence d’émission de votre radio, et inversement. L’assistant affiche les deux du point de vue de votre radio, pour que vous puissiez les recopier directement dans votre codeplug.</p>
+        </div>
+        <figure class="module channel" style="margin:0">
+          <dl class="lcd">
+            <div><dt>TX DE VOTRE RADIO</dt><dd>432.0000</dd></div>
+            <div><dt>RX DE VOTRE RADIO</dt><dd>434.0000</dd></div>
+            <div><dt>COLOUR CODE</dt><dd>1</dd></div>
+            <div><dt>SLOTS</dt><dd>TS1 + TS2</dd></div>
+          </dl>
+          <figcaption class="fine">Valeurs d’exemple pour un hat duplex. Utilisez les vôtres.</figcaption>
+        </figure>
+      </div>
+
+      <div class="sub">
+        <h3 class="display sub-h">Le DMR expliqué en cinq termes</h3>
+        <dl class="glossary">
+          <div><dt>Talkgroup (TG)</dt><dd>Un canal partagé sur le réseau. Le TG 91 couvre le monde entier, et la plupart des pays ont le leur.</dd></div>
+          <div><dt>Timeslot (TS1, TS2)</dt><dd>Le DMR fait passer deux conversations sur une seule fréquence. Un hat simplex n’utilise que le TS2.</dd></div>
+          <div><dt>Colour code (CC)</dt><dd>C’est l’équivalent d’un CTCSS pour le DMR. La radio et le hotspot doivent avoir le même ; 1 convient très bien.</dd></div>
+          <div><dt>Talkgroup statique</dt><dd>Ce canal est toujours actif : vous l’entendez sans avoir à émettre. Le tableau de bord les configure pour vous.</dd></div>
+          <div><dt>Talkgroup dynamique</dt><dd>Il s’active quand vous émettez, et se désactive tout seul quand le canal reste silencieux.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- Coming from WPSD -->
+  <section class="section deep" id="from-wpsd">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Vous venez de WPSD ou de Pi-Star ?</span>
+        <h2>Uniquement en DMR sur BrandMeister ? Passez au logiciel hôte de BrandMeister.</h2>
+        <p>Gardez votre Pi et votre hat MMDVM_HS actuels. Cette carte fait tourner DMRHost, le logiciel de hotspot développé par BrandMeister, et gère vos talkgroups sans passer par SelfCare.</p>
+      </div>
+      <div class="table-box">
+        <table class="compare">
+          <thead>
+            <tr>
+              <td style="width: 18%"></td>
+              <th scope="col">UNE IMAGE MULTIMODE</th>
+              <th scope="col" class="ours">CETTE CARTE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Installation</th><td data-label="Image multimode">On démarre d’abord, puis on cherche le Pi et on le configure dans sa page web</td><td class="ours" data-label="Cette carte">Vous répondez d’abord à un assistant sur votre ordinateur ; le Pi démarre entièrement configuré</td></tr>
+            <tr><th scope="row">Logiciel hôte</th><td data-label="Image multimode">MMDVMHost et des passerelles pour de nombreux modes</td><td class="ours" data-label="Cette carte">BrandMeister DMRHost, directement depuis le dépôt apt de BrandMeister</td></tr>
+            <tr><th scope="row">Talkgroups</th><td data-label="Image multimode">Connexion à SelfCare pour modifier les statiques</td><td class="ours" data-label="Cette carte">Statiques, statiques programmés et préréglages, directement depuis le tableau de bord</td></tr>
+            <tr><th scope="row">Tableau de bord</th><td data-label="Image multimode">État et dernières stations entendues</td><td class="ours" data-label="Cette carte">Les deux timeslots, l’état de la liaison, l’évolution du BER et un réglage de l’offset RX</td></tr>
+            <tr><th scope="row">Périmètre</th><td data-label="Image multimode">De nombreux modes et réseaux</td><td class="ours" data-label="Cette carte">Le DMR sur BrandMeister, et absolument rien d’autre.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="split sub" style="align-items: flex-start">
+        <div class="head">
+          <h3 class="display sub-h">Recopiez cinq valeurs, puis échangez les cartes.</h3>
+          <p>Partez d’une nouvelle carte SD et gardez l’actuelle en lieu sûr. Recopiez ces informations de votre hotspot actuel dans l’assistant. Le codeplug de votre radio ne change pas du tout.</p>
+          <ol class="muted moves">
+            <li>Écrivez Raspberry Pi OS Lite (64-bit) sur la nouvelle carte</li>
+            <li>Lancez l’assistant et saisissez vos valeurs</li>
+            <li>Échangez les cartes et mettez sous tension. Comptez 5 à 15 minutes.</li>
+          </ol>
+        </div>
+        <figure class="module bring" style="margin:0">
+          <figcaption class="label" style="padding: 2px 6px 10px">À reprendre</figcaption>
+          <ul class="lcd">
+            <li><span>Fréquence RX</span><span>___.____ MHz</span></li>
+            <li><span>Fréquence TX</span><span>___.____ MHz</span></li>
+            <li><span>Offset RX</span><span>____ Hz</span></li>
+            <li><span>Colour code</span><span>__</span></li>
+            <li><span>Master BrandMeister</span><span>____</span></li>
+          </ul>
+          <p class="fine" style="margin: 10px 6px 4px">L’assistant trouve votre ID DMR à partir de votre indicatif. Il vous faudra aussi votre mot de passe hotspot BrandMeister, et une clé API SelfCare pour gérer les talkgroups.</p>
+        </figure>
+      </div>
+
+      <div class="fit">
+        <div class="module">
+          <span class="label" style="display: inline-flex; align-items: center; gap: 8px; color: var(--rx-text)"><span class="led" aria-hidden="true"></span>Cette carte vous convient si</span>
+          <ul>
+            <li>Vous ne faites que du DMR, et uniquement sur BrandMeister</li>
+            <li>Vous changez souvent de talkgroup, surtout avant les réseaux</li>
+            <li>Vous voulez un tableau de bord facile à lire sur un téléphone</li>
+            <li>Vous préférez tout configurer une fois sur votre ordinateur</li>
+          </ul>
+        </div>
+        <div class="module">
+          <span class="label" style="display: inline-flex; align-items: center; gap: 8px"><span class="led led-off" aria-hidden="true"></span>Restez sur WPSD si</span>
+          <ul class="muted">
+            <li>Vous utilisez D-Star, YSF, P25, NXDN ou M17</li>
+            <li>Vous vous connectez à TGIF, FreeDMR ou d’autres réseaux DMR</li>
+            <li>Votre hotspot est un Pi 5, que nous ne prenons pas encore en charge</li>
+            <li>Vous avez besoin d’un logiciel éprouvé, car ce projet est encore jeune</li>
+          </ul>
+        </div>
+      </div>
+      <p class="fine">Essayez d’abord sur une carte de rechange : votre carte actuelle reste telle quelle, vous pouvez donc revenir en arrière à tout moment. WPSD et Pi-Star sont des projets distincts, sans lien avec celui-ci.</p>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section class="section" id="download">
+    <div class="wrap">
+      <div class="head">
+        <span class="label">Téléchargement</span>
+        <h2>Téléchargez l’installateur</h2>
+        <p>Lancez l’installateur sur l’ordinateur qui vous sert à écrire la carte SD. L’assistant s’ouvre dans votre navigateur web.</p>
+      </div>
+      <div class="downloads">
+        <div class="module dl" data-os="windows">
+          <h3>Windows <span class="yours label"><span class="led" aria-hidden="true"></span>Votre système</span></h3>
+          <a class="btn btn-go" href="https://github.com/jcalado/dmrhost-installer/releases/latest/download/dmrhost-installer-windows-x64.exe">Télécharger le .exe</a>
+          <p>Le fichier n’est pas encore signé, donc Windows affichera un avertissement. Choisissez <strong>Informations complémentaires</strong>, puis <strong>Exécuter quand même</strong>.</p>
+        </div>
+        <div class="module dl" data-os="mac">
+          <h3>macOS, puce Apple <span class="yours label"><span class="led" aria-hidden="true"></span>Votre système</span></h3>
+          <a class="btn btn-go" href="https://github.com/jcalado/dmrhost-installer/releases/latest/download/dmrhost-installer-macos-arm64">Télécharger</a>
+          <p>Dans le Terminal, depuis votre dossier de téléchargement :</p>
+          <pre><code>xattr -d com.apple.quarantine dmrhost-installer-macos-arm64
+chmod +x dmrhost-installer-macos-arm64
+./dmrhost-installer-macos-arm64</code></pre>
+        </div>
+        <div class="module dl" data-os="linux">
+          <h3>Linux <span class="yours label"><span class="led" aria-hidden="true"></span>Votre système</span></h3>
+          <a class="btn btn-go" href="https://github.com/jcalado/dmrhost-installer/releases/latest/download/dmrhost-installer-linux-x64">Télécharger</a>
+          <pre><code>chmod +x dmrhost-installer-linux-x64
+./dmrhost-installer-linux-x64</code></pre>
+        </div>
+      </div>
+      <p class="fine">Vous préférez Python ? Avec Python 3.9 ou plus récent, clonez le <a href="https://github.com/jcalado/dmrhost-installer">dépôt</a> et lancez <code>python3 wizard.py</code>. Ajoutez <code>--cli</code> pour répondre aux questions dans le terminal.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <div class="wrap">
+      <h2>Questions fréquentes</h2>
+      <div class="faq">
+        <details open>
+          <summary>Faut-il connaître Linux ?</summary>
+          <p>Non, vous n’avez jamais besoin d’ouvrir un terminal sur le Pi. Si vous aimez utiliser SSH, il est disponible avec votre clé ou votre mot de passe.</p>
+        </details>
+        <details>
+          <summary>Et si je me trompe en saisissant quelque chose ?</summary>
+          <p>Réécrivez simplement la carte avec Imager et relancez l’assistant. Vous pourrez toujours modifier plus tard les talkgroups et l’offset RX depuis le tableau de bord.</p>
+        </details>
+        <details>
+          <summary>Rien ne s’est passé au bout de 15 minutes</summary>
+          <p>C’est généralement un problème de Wi-Fi. Vérifiez le nom et le mot de passe de votre réseau, ou branchez un câble Ethernet sur un Pi 3 ou 4. L’installation réessaie toutes les minutes, même après un redémarrage, et reprend donc d’elle-même dès que le Pi est en ligne.</p>
+        </details>
+        <details>
+          <summary>Le tableau de bord affiche un bandeau rouge</summary>
+          <p>Cela signifie que la liaison BrandMeister est coupée. Vérifiez le mot de passe de sécurité hotspot défini dans SelfCare : il est différent de votre mot de passe de connexion BrandMeister.</p>
+        </details>
+        <details>
+          <summary>J’entends les autres, mais eux ne m’entendent pas</summary>
+          <p>Vérifiez que la fréquence TX de votre radio correspond à la fréquence RX du hotspot, et que les colour codes sont identiques. Si votre audio est haché, essayez le réglage de l’offset RX dans le tableau de bord.</p>
+        </details>
+        <details>
+          <summary>Puis-je prêter la carte SD sans risque ?</summary>
+          <p>Ne la prêtez pas avant le premier démarrage. Jusque-là, la carte contient en clair vos mots de passe hotspot, Wi-Fi et de connexion. Le premier démarrage les déplace dans des fichiers sécurisés et les efface de la carte.</p>
+        </details>
+        <details>
+          <summary>Est-ce que c’est payant ?</summary>
+          <p>Non, c’est gratuit et open source, sous licence MIT. DMRHost est le logiciel de BrandMeister, et dmrdash est le tableau de bord.</p>
+        </details>
+        <details>
+          <summary>Le projet est-il terminé ?</summary>
+          <p>C’est encore le début. Les réglages qu’il écrit correspondent à un hotspot qui fonctionne, mais le processus complet, de la carte au premier démarrage, n’a pas encore été testé sur du vrai matériel. Les retours sont toujours les bienvenus sur <a href="https://github.com/jcalado/dmrhost-installer/issues">GitHub</a>.</p>
+        </details>
+      </div>
+      <div class="module callout">
+        <div><p class="display">Prêt pour votre premier QSO ?</p></div>
+        <a class="btn btn-go btn-lg" href="#download">Télécharger l’installateur</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <a href="https://github.com/jcalado/dmrhost-installer">GitHub</a>
+    <a href="https://github.com/BrandMeister/DMRHost">BrandMeister DMRHost</a>
+    <a href="https://github.com/jcalado/dmrdash">dmrdash</a>
+    <span class="end">CT7BLE · 73</span>
+  </div>
+</footer>
+
+<script src="../os.js" defer></script>
+<script src="../lang.js" defer></script>
+</body>
+</html>

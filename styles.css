@@ -70,6 +70,17 @@ strong { color: var(--white); font-weight: 600; }
 .nav-links a:not(.btn):hover { color: var(--white); }
 @media (max-width: 1000px) { .nav-links a.hide-sm { display: none; } }
 
+.lang { position: relative; }
+.lang summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 12px 2px; color: var(--legend); font-size: 14px; }
+.lang summary::-webkit-details-marker { display: none; }
+.lang summary::after { content: ""; border: 4px solid transparent; border-top-color: currentColor; margin-top: 4px; }
+.lang summary:hover, .lang[open] summary { color: var(--white); }
+.lang svg { fill: none; stroke: currentColor; stroke-width: 1.2; }
+.lang ul { position: absolute; right: 0; top: 100%; z-index: 20; margin: 0; padding: 6px; list-style: none; min-width: 168px; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 8px; box-shadow: 0 10px 28px rgb(0 0 0 / 0.45); }
+.nav .lang a { display: block; padding: 8px 10px; border-radius: 5px; color: var(--legend); font-size: 14px; text-decoration: none; }
+.nav .lang a:hover { background: var(--panel-3); color: var(--white); }
+.nav .lang a[aria-current] { color: var(--white); background: var(--row); }
+
 /* ---------- type ---------- */
 .label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--legend); text-transform: uppercase; }
 h1, h2, .display { font-family: var(--readout); font-weight: 800; margin: 0; text-wrap: balance; }
